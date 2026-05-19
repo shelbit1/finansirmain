@@ -9,8 +9,16 @@ import {
   Sparkles,
   ShieldCheck,
   Smartphone,
+  Check,
 } from "lucide-react";
 import { readSession } from "@/lib/session";
+import { Footer } from "@/components/landing/Footer";
+import {
+  PLAN_PERIOD_MONTHS,
+  PLAN_PRICE_RUB,
+  TRIAL_DAYS,
+} from "@/lib/billing";
+import { formatMoney } from "@/lib/utils";
 
 export default async function LandingPage() {
   const session = await readSession();
@@ -24,6 +32,12 @@ export default async function LandingPage() {
             Финансыр
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              href="#pricing"
+              className="hidden sm:inline-flex px-3 py-2 text-sm font-medium text-text hover:text-primary"
+            >
+              Цены
+            </Link>
             <Link
               href="/login"
               className="px-4 py-2 text-sm font-medium text-text hover:text-primary"
@@ -43,15 +57,11 @@ export default async function LandingPage() {
       <main className="flex-1">
         <Hero />
         <Features />
+        <Pricing />
         <CTA />
       </main>
 
-      <footer className="border-t border-border bg-surface">
-        <div className="max-w-6xl mx-auto px-6 py-8 text-sm text-text-muted flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p>© {new Date().getFullYear()} Финансыр</p>
-          <p>Сделано с любовью к чистым деньгам</p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
@@ -145,6 +155,78 @@ function Features() {
               <p className="text-sm text-text-muted">{f.desc}</p>
             </div>
           ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const PLAN_INCLUDES = [
+  "Счета и операции без лимитов",
+  "Долги: «я должен» и «должны мне»",
+  "Активы и портфель",
+  "Отчёты, планы, ежедневная памятка",
+  "Поддержка по email",
+];
+
+function Pricing() {
+  return (
+    <section id="pricing" className="px-6 py-16">
+      <div className="max-w-3xl mx-auto">
+        <div className="text-center mb-10">
+          <h2 className="font-display text-3xl sm:text-4xl font-bold">
+            Простая цена
+          </h2>
+          <p className="text-text-muted mt-2">
+            Один тариф для всех. Без скрытых платежей и допуслуг.
+          </p>
+        </div>
+
+        <div className="card p-8 sm:p-10">
+          <div className="text-center mb-6">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+              <Sparkles className="w-3.5 h-3.5" />
+              Пробный период {TRIAL_DAYS} дней — бесплатно
+            </span>
+            <div className="mt-5 flex items-end justify-center gap-2">
+              <span className="font-display text-5xl sm:text-6xl font-bold tracking-tight">
+                {formatMoney(PLAN_PRICE_RUB).replace(",00", "")}
+              </span>
+              <span className="text-text-muted mb-2">
+                / {PLAN_PERIOD_MONTHS} мес.
+              </span>
+            </div>
+            <p className="text-sm text-text-muted mt-2">
+              Ежемесячная подписка, отмена в любой момент
+            </p>
+          </div>
+
+          <ul className="grid sm:grid-cols-2 gap-y-2 gap-x-6 mb-6">
+            {PLAN_INCLUDES.map((item) => (
+              <li key={item} className="flex items-start gap-2 text-sm">
+                <Check className="w-4 h-4 text-income shrink-0 mt-0.5" />
+                {item}
+              </li>
+            ))}
+          </ul>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Link href="/register" className="btn btn-primary flex-1">
+              Начать бесплатно
+            </Link>
+            <Link href="/refund" className="btn btn-ghost flex-1">
+              Условия возврата
+            </Link>
+          </div>
+
+          <p className="text-xs text-text-muted text-center mt-5 leading-relaxed">
+            Оплата через АО «Т-Банк». Реквизиты карты не попадают на наши
+            серверы. Возврат — в течение 14 дней по{" "}
+            <Link href="/refund" className="text-primary hover:underline">
+              политике возвратов
+            </Link>
+            .
+          </p>
         </div>
       </div>
     </section>

@@ -11,6 +11,15 @@ export const registerSchema = z.object({
   name: z.string().trim().min(1, "Введите имя").max(80, "Слишком длинное имя"),
   email: emailSchema,
   password: passwordSchema,
+  consent: z
+    .string()
+    .refine((v) => v === "on" || v === "true", {
+      message: "Необходимо согласие на обработку персональных данных",
+    }),
+  marketingConsent: z
+    .string()
+    .optional()
+    .transform((v) => v === "on" || v === "true"),
 });
 
 export const loginSchema = z.object({

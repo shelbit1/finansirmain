@@ -10,7 +10,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/dal";
+import { requireActiveSubscription, requireUser } from "@/lib/dal";
 import {
   decimalToNumber,
   endOfMonth,
@@ -27,6 +27,7 @@ import { DailyChart } from "@/components/app/dashboard/DailyChart";
 export const metadata = { title: "Дашборд — Финансыр" };
 
 export default async function DashboardPage() {
+  await requireActiveSubscription();
   const user = await requireUser();
   const userId = user.id;
 

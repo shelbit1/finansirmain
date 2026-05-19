@@ -20,13 +20,15 @@ export async function registerAction(
     name: formData.get("name"),
     email: formData.get("email"),
     password: formData.get("password"),
+    consent: formData.get("consent") ?? "",
+    marketingConsent: formData.get("marketingConsent") ?? "",
   });
 
   if (!parsed.success) {
     return { errors: parsed.error.flatten().fieldErrors };
   }
 
-  const { name, email, password } = parsed.data;
+  const { name, email, password, marketingConsent } = parsed.data;
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
@@ -35,7 +37,13 @@ export async function registerAction(
 
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await prisma.user.create({
-    data: { name, email, password: passwordHash },
+    data: {
+      name,
+      email,
+      password: passwordHash,
+      consentAcceptedAt: new Date(),
+      marketingConsent,
+    },
     select: { id: true },
   });
 

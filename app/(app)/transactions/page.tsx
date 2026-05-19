@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { requireUserId } from "@/lib/dal";
+import { requireActiveSubscription } from "@/lib/dal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
   AddTransactionButton,
@@ -12,7 +12,7 @@ import { decimalToNumber } from "@/lib/utils";
 export const metadata = { title: "Операции — Финансыр" };
 
 export default async function TransactionsPage() {
-  const userId = await requireUserId();
+  const userId = await requireActiveSubscription();
 
   const [items, accounts, incomeCategories, expenseCategories, openDebts] =
     await Promise.all([

@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
+import { TRIAL_DAYS } from "@/lib/billing";
 
 const DEFAULT_INCOME_CATEGORIES = [
   { name: "Зарплата", icon: "💼", color: "#22C55E" },
@@ -21,6 +22,7 @@ const DEFAULT_EXPENSE_CATEGORIES = [
 ];
 
 export async function seedDefaultsForUser(userId: string): Promise<void> {
+  const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * 86_400_000);
   await prisma.$transaction([
     prisma.account.create({
       data: {
@@ -37,6 +39,13 @@ export async function seedDefaultsForUser(userId: string): Promise<void> {
     }),
     prisma.expenseCategory.createMany({
       data: DEFAULT_EXPENSE_CATEGORIES.map((c) => ({ ...c, userId })),
+    }),
+    prisma.subscription.create({
+      data: {
+        userId,
+        status: "TRIALING",
+        trialEndsAt,
+      },
     }),
   ]);
 }

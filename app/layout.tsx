@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import { CookieBanner } from "@/components/landing/CookieBanner";
+import { YandexMetrika } from "@/components/landing/YandexMetrika";
 
 const inter = Inter({
   subsets: ["latin", "cyrillic"],
@@ -25,7 +27,11 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ru" className={`${inter.variable} ${jakarta.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <CookieBanner />
+        <YandexMetrika />
+      </body>
     </html>
   );
 }

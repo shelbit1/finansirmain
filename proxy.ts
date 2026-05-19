@@ -9,6 +9,9 @@ const PROTECTED_PREFIXES = [
   "/debts",
   "/assets",
   "/settings",
+  "/plans",
+  "/reports",
+  "/billing",
 ];
 const PUBLIC_AUTH_PATHS = ["/login", "/register"];
 

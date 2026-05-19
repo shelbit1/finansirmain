@@ -14,6 +14,9 @@ model User {
   email     String   @unique
   name      String?
   password  String
+  // Юридические согласия
+  consentAcceptedAt DateTime?
+  marketingConsent  Boolean   @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -26,6 +29,66 @@ model User {
   assets            Asset[]
   assetValueHistory AssetValueHistory[]
   plans             Plan[]
+  subscription      Subscription?
+  payments          Payment[]
+}
+
+// ─── ПОДПИСКА И ПЛАТЕЖИ ──────────────────────────────────────────────────────
+
+enum SubscriptionStatus {
+  TRIALING  // активен пробный период
+  ACTIVE    // оплачен, идёт оплаченный период
+  PAST_DUE  // период истёк, оплаты нет
+  CANCELED  // отменена пользователем, действует до конца периода
+}
+
+model Subscription {
+  id               String             @id @default(cuid())
+  userId           String             @unique
+  status           SubscriptionStatus @default(TRIALING)
+  trialEndsAt      DateTime?
+  currentPeriodEnd DateTime?
+  canceledAt       DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+enum PaymentStatus {
+  NEW
+  FORM_SHOWED
+  AUTHORIZED
+  CONFIRMED
+  REJECTED
+  REFUNDED
+  CANCELED
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  userId         String
+  orderId        String        @unique // наш external_id, передаваемый в T-Bank как OrderId
+  amount         Decimal       @db.Decimal(18, 2)
+  currency       String        @default("RUB")
+  status         PaymentStatus @default(NEW)
+  description    String?
+  periodMonths   Int           @default(1)
+  tbankPaymentId String?       @unique
+  tbankStatus    String?
+  paymentUrl     String?
+  paidAt         DateTime?
+  errorCode      String?
+  errorMessage   String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
 }
 
 // ─── СЧЁТ ────────────────────────────────────────────────────────────────────

@@ -11,6 +11,7 @@ import {
   Coins,
   BarChart3,
   CalendarCheck,
+  CreditCard,
   Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ const NAV = [
   { href: "/categories", label: "Категории", icon: Tag },
   { href: "/debts", label: "Долги", icon: HandCoins },
   { href: "/assets", label: "Активы", icon: Coins },
+  { href: "/billing", label: "Подписка", icon: CreditCard },
   { href: "/settings", label: "Настройки", icon: Settings },
 ];
 

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { requireUserId } from "@/lib/dal";
+import { requireActiveSubscription } from "@/lib/dal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
   AddPlanButton,
@@ -11,7 +11,7 @@ import { decimalToNumber } from "@/lib/utils";
 export const metadata = { title: "Планы — Финансыр" };
 
 export default async function PlansPage() {
-  const userId = await requireUserId();
+  const userId = await requireActiveSubscription();
 
   const plans = await prisma.plan.findMany({
     where: { userId },

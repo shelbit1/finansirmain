@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { requireUserId } from "@/lib/dal";
+import { requireActiveSubscription } from "@/lib/dal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
   AccountsManager,
@@ -10,7 +10,7 @@ import { decimalToNumber } from "@/lib/utils";
 export const metadata = { title: "Счета — Финансыр" };
 
 export default async function AccountsPage() {
-  const userId = await requireUserId();
+  const userId = await requireActiveSubscription();
   const accounts = await prisma.account.findMany({
     where: { userId },
     orderBy: { createdAt: "asc" },

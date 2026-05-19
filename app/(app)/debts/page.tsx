@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { requireUserId } from "@/lib/dal";
+import { requireActiveSubscription } from "@/lib/dal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
   AddDebtButton,
@@ -11,7 +11,7 @@ import { decimalToNumber, formatMoney } from "@/lib/utils";
 export const metadata = { title: "Долги — Финансыр" };
 
 export default async function DebtsPage() {
-  const userId = await requireUserId();
+  const userId = await requireActiveSubscription();
   const debts = await prisma.debt.findMany({
     where: { userId },
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],

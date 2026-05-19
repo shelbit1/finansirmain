@@ -1,6 +1,6 @@
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { prisma } from "@/lib/db";
-import { requireUserId } from "@/lib/dal";
+import { requireActiveSubscription } from "@/lib/dal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
   AddAssetButton,
@@ -12,7 +12,7 @@ import { decimalToNumber, formatMoney, percentChange } from "@/lib/utils";
 export const metadata = { title: "Активы — Финансыр" };
 
 export default async function AssetsPage() {
-  const userId = await requireUserId();
+  const userId = await requireActiveSubscription();
   const assets = await prisma.asset.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },

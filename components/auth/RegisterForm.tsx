@@ -1,12 +1,14 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import Link from "next/link";
 import { registerAction, type AuthFormState } from "@/app/actions/auth";
 
 const initial: AuthFormState = null;
 
 export function RegisterForm() {
   const [state, action, pending] = useActionState(registerAction, initial);
+  const [consent, setConsent] = useState(false);
 
   return (
     <form action={action} className="space-y-4">
@@ -65,13 +67,73 @@ export function RegisterForm() {
         )}
       </div>
 
+      <div className="space-y-2.5 pt-1">
+        <label className="flex items-start gap-2.5 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            name="consent"
+            checked={consent}
+            onChange={(e) => setConsent(e.target.checked)}
+            required
+            className="w-4 h-4 mt-0.5 accent-primary cursor-pointer shrink-0"
+          />
+          <span className="text-xs leading-snug text-text-muted">
+            Я ознакомлен(а) с{" "}
+            <Link
+              href="/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              Политикой конфиденциальности
+            </Link>{" "}
+            и даю{" "}
+            <Link
+              href="/consent"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              согласие на обработку персональных данных
+            </Link>
+          </span>
+        </label>
+        {state?.errors?.consent?.[0] && (
+          <p className="text-expense text-xs">{state.errors.consent[0]}</p>
+        )}
+
+        <label className="flex items-start gap-2.5 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            name="marketingConsent"
+            className="w-4 h-4 mt-0.5 accent-primary cursor-pointer shrink-0"
+          />
+          <span className="text-xs leading-snug text-text-muted">
+            Я согласен(на) получать новости и предложения сервиса «Финансыр» на
+            email.{" "}
+            <Link
+              href="/consent-marketing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              Условия рассылки
+            </Link>
+          </span>
+        </label>
+      </div>
+
       {state?.message && (
         <p className="text-expense text-sm bg-expense/8 border border-expense/20 rounded-lg px-3 py-2">
           {state.message}
         </p>
       )}
 
-      <button type="submit" className="btn btn-primary w-full" disabled={pending}>
+      <button
+        type="submit"
+        className="btn btn-primary w-full"
+        disabled={pending || !consent}
+      >
         {pending ? "Создаём…" : "Создать аккаунт"}
       </button>
     </form>

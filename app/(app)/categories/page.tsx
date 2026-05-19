@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/db";
-import { requireUserId } from "@/lib/dal";
+import { requireActiveSubscription } from "@/lib/dal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { CategoriesManager } from "@/components/app/categories/CategoriesManager";
 
 export const metadata = { title: "Категории — Финансыр" };
 
 export default async function CategoriesPage() {
-  const userId = await requireUserId();
+  const userId = await requireActiveSubscription();
   const [income, expense] = await Promise.all([
     prisma.incomeCategory.findMany({
       where: { userId },

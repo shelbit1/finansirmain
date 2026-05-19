@@ -1,4 +1,4 @@
-import { requireUserId } from "@/lib/dal";
+import { requireActiveSubscription } from "@/lib/dal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
   buildReport,
@@ -25,7 +25,7 @@ export default async function ReportsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const userId = await requireUserId();
+  const userId = await requireActiveSubscription();
   const sp = await searchParams;
 
   const now = new Date();
