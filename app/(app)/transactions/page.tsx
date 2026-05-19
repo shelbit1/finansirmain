@@ -14,7 +14,7 @@ export const metadata = { title: "Операции — Финансыр" };
 export default async function TransactionsPage() {
   const userId = await requireActiveSubscription();
 
-  const [items, accounts, incomeCategories, expenseCategories, openDebts] =
+  const [items, accounts, incomeCategories, expenseCategories, openDebts, allDebtPeople] =
     await Promise.all([
       prisma.transaction.findMany({
         where: { userId },
@@ -49,7 +49,17 @@ export default async function TransactionsPage() {
         include: { payments: { select: { amount: true } } },
         orderBy: [{ direction: "asc" }, { personName: "asc" }],
       }),
+      prisma.debt.findMany({
+        where: { userId },
+        select: { personName: true },
+        distinct: ["personName"],
+        orderBy: { personName: "asc" },
+      }),
     ]);
+
+  const personNames = allDebtPeople
+    .map((d) => d.personName)
+    .filter((n): n is string => Boolean(n));
 
   const debtOptions: DebtOption[] = openDebts.map((d) => {
     const paid = d.payments.reduce((s, p) => s + decimalToNumber(p.amount), 0);
@@ -97,6 +107,7 @@ export default async function TransactionsPage() {
             incomeCategories={incomeCategories}
             expenseCategories={expenseCategories}
             debts={debtOptions}
+            personNames={personNames}
           />
         }
       />
@@ -106,6 +117,7 @@ export default async function TransactionsPage() {
         incomeCategories={incomeCategories}
         expenseCategories={expenseCategories}
         debts={debtOptions}
+        personNames={personNames}
       />
     </>
   );

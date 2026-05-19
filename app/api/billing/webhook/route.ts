@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { mapTbankStatus, verifyTbankNotification } from "@/lib/tbank";
-import { extendSubscriptionAfterPayment } from "@/lib/billing";
+import { verifyTbankNotification } from "@/lib/tbank";
+import { applyTbankStatusToPayment } from "@/lib/billing";
 
 /**
  * Уведомление T-Bank. Если возвращаем тело "OK" (text/plain) — T-Bank считает,
@@ -12,17 +12,26 @@ export async function POST(req: Request) {
   try {
     body = (await req.json()) as Record<string, unknown>;
   } catch {
+    console.error("[tbank-webhook] BAD_JSON");
     return new NextResponse("BAD_JSON", { status: 400 });
   }
 
+  console.log("[tbank-webhook] received", {
+    OrderId: body.OrderId,
+    PaymentId: body.PaymentId,
+    Status: body.Status,
+    Success: body.Success,
+    ErrorCode: body.ErrorCode,
+  });
+
   if (!verifyTbankNotification(body)) {
+    console.error("[tbank-webhook] INVALID_TOKEN", { OrderId: body.OrderId });
     return new NextResponse("INVALID_TOKEN", { status: 401 });
   }
 
   const orderId = body.OrderId ? String(body.OrderId) : null;
   const tbankPaymentId = body.PaymentId ? String(body.PaymentId) : null;
   const status = body.Status ? String(body.Status) : null;
-  const success = body.Success === true || body.Success === "true";
   const errorCode = body.ErrorCode ? String(body.ErrorCode) : null;
   const errorMessage = body.Message ? String(body.Message) : null;
 
@@ -32,29 +41,17 @@ export async function POST(req: Request) {
 
   const payment = await prisma.payment.findUnique({ where: { orderId } });
   if (!payment) {
+    console.error("[tbank-webhook] NO_PAYMENT", { orderId });
     return new NextResponse("NO_PAYMENT", { status: 404 });
   }
 
-  const mapped = mapTbankStatus(status);
-  const wasConfirmed = payment.status === "CONFIRMED";
-
-  await prisma.payment.update({
-    where: { id: payment.id },
-    data: {
-      status: mapped,
-      tbankStatus: status,
-      tbankPaymentId: tbankPaymentId ?? payment.tbankPaymentId,
-      paidAt: mapped === "CONFIRMED" && !payment.paidAt ? new Date() : payment.paidAt,
-      errorCode: errorCode ?? payment.errorCode,
-      errorMessage:
-        errorCode && errorCode !== "0" ? errorMessage : payment.errorMessage,
-    },
+  await applyTbankStatusToPayment({
+    payment,
+    tbankStatus: status,
+    tbankPaymentId,
+    errorCode,
+    errorMessage,
   });
-
-  // При первом CONFIRMED продлеваем подписку.
-  if (mapped === "CONFIRMED" && !wasConfirmed && success) {
-    await extendSubscriptionAfterPayment(payment.userId, payment.periodMonths);
-  }
 
   return new NextResponse("OK", {
     status: 200,

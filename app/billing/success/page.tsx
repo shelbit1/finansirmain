@@ -3,6 +3,7 @@ import { CheckCircle2, Clock } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { readSession } from "@/lib/session";
 import { redirect } from "next/navigation";
+import { SuccessSync } from "@/components/app/billing/SuccessSync";
 
 export const metadata = {
   title: "Оплата получена — Финансыр",
@@ -65,6 +66,13 @@ export default async function BillingSuccessPage({
             К подписке
           </Link>
         </div>
+
+        {orderId && (
+          <SuccessSync
+            orderId={orderId}
+            initiallyConfirmed={isConfirmed}
+          />
+        )}
       </div>
     </div>
   );

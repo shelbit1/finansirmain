@@ -1,8 +1,9 @@
 import "server-only";
-import type { Subscription } from "@prisma/client";
+import type { Payment, PaymentStatus, Subscription } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { mapTbankStatus } from "@/lib/tbank";
 
-export const PLAN_PRICE_RUB = 500;
+export const PLAN_PRICE_RUB = 10;
 export const PLAN_PRICE_KOPECKS = PLAN_PRICE_RUB * 100;
 export const PLAN_PERIOD_MONTHS = 1;
 export const TRIAL_DAYS = 7;
@@ -112,6 +113,47 @@ export async function extendSubscriptionAfterPayment(
       currentPeriodEnd: newEnd,
     },
   });
+}
+
+/**
+ * Применить ответ T-Bank (webhook или GetState) к нашей записи Payment.
+ * Возвращает обновлённую запись и флаг "впервые CONFIRMED" — чтобы вызывать
+ * продление подписки только один раз.
+ */
+export async function applyTbankStatusToPayment(opts: {
+  payment: Payment;
+  tbankStatus: string | null | undefined;
+  tbankPaymentId?: string | null;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+}): Promise<{ payment: Payment; justConfirmed: boolean }> {
+  const mapped: PaymentStatus = mapTbankStatus(opts.tbankStatus);
+  const wasConfirmed = opts.payment.status === "CONFIRMED";
+
+  const updated = await prisma.payment.update({
+    where: { id: opts.payment.id },
+    data: {
+      status: mapped,
+      tbankStatus: opts.tbankStatus ?? opts.payment.tbankStatus,
+      tbankPaymentId: opts.tbankPaymentId ?? opts.payment.tbankPaymentId,
+      paidAt:
+        mapped === "CONFIRMED" && !opts.payment.paidAt
+          ? new Date()
+          : opts.payment.paidAt,
+      errorCode: opts.errorCode ?? opts.payment.errorCode,
+      errorMessage:
+        opts.errorCode && opts.errorCode !== "0"
+          ? (opts.errorMessage ?? opts.payment.errorMessage)
+          : opts.payment.errorMessage,
+    },
+  });
+
+  const justConfirmed = mapped === "CONFIRMED" && !wasConfirmed;
+  if (justConfirmed) {
+    await extendSubscriptionAfterPayment(updated.userId, updated.periodMonths);
+  }
+
+  return { payment: updated, justConfirmed };
 }
 
 function addMonths(date: Date, months: number): Date {

@@ -14,6 +14,7 @@ import {
 } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { CheckoutButton } from "@/components/app/billing/CheckoutButton";
+import { SyncPaymentButton } from "@/components/app/billing/SyncPaymentButton";
 
 export const metadata = { title: "Подписка — Финансыр" };
 
@@ -173,6 +174,11 @@ export default async function BillingPage() {
                   label: p.status,
                   className: "text-text-muted",
                 };
+                const canSync =
+                  Boolean(p.tbankPaymentId) &&
+                  (p.status === "NEW" ||
+                    p.status === "FORM_SHOWED" ||
+                    p.status === "AUTHORIZED");
                 return (
                   <li
                     key={p.id}
@@ -193,6 +199,7 @@ export default async function BillingPage() {
                       <p className={`text-xs ${meta.className}`}>
                         {meta.label}
                       </p>
+                      {canSync && <SyncPaymentButton orderId={p.orderId} />}
                     </div>
                   </li>
                 );

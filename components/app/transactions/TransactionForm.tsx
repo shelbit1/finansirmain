@@ -59,6 +59,7 @@ export function TransactionForm({
   incomeCategories,
   expenseCategories,
   debts,
+  personNames = [],
   onSuccess,
 }: {
   transaction?: TransactionDto;
@@ -66,6 +67,7 @@ export function TransactionForm({
   incomeCategories: CategoryOption[];
   expenseCategories: CategoryOption[];
   debts: DebtOption[];
+  personNames?: string[];
   onSuccess: () => void;
 }) {
   const isEdit = Boolean(transaction);
@@ -212,9 +214,20 @@ export function TransactionForm({
             defaultValue={transaction?.personName ?? ""}
             placeholder="Например: Дима"
             className="input"
+            list={personNames.length > 0 ? "debt-person-names" : undefined}
+            autoComplete="off"
           />
+          {personNames.length > 0 && (
+            <datalist id="debt-person-names">
+              {personNames.map((n) => (
+                <option key={n} value={n} />
+              ))}
+            </datalist>
+          )}
           <p className="text-xs text-text-muted mt-1">
-            Долг автоматически появится в разделе «Долги».
+            {personNames.length > 0
+              ? "Можно выбрать из списка или ввести новое имя. Долг автоматически появится в разделе «Долги»."
+              : "Долг автоматически появится в разделе «Долги»."}
           </p>
         </div>
       )}

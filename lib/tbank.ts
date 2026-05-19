@@ -109,6 +109,41 @@ export async function tbankInit(
   return (await res.json()) as TbankInitResponse;
 }
 
+export type TbankGetStateResponse = {
+  Success: boolean;
+  ErrorCode: string;
+  Message?: string;
+  Details?: string;
+  TerminalKey?: string;
+  Status?: string;
+  PaymentId?: string;
+  OrderId?: string;
+  Amount?: number;
+};
+
+/** Запросить актуальный статус платежа в T-Bank. */
+export async function tbankGetState(input: {
+  paymentId: string;
+}): Promise<TbankGetStateResponse> {
+  const { terminalKey, password } = getTbankCredentials();
+  const body: Record<string, unknown> = {
+    TerminalKey: terminalKey,
+    PaymentId: input.paymentId,
+  };
+  body.Token = signTbankPayload(body, password);
+
+  const res = await fetch(`${TBANK_API_URL}/GetState`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`T-Bank GetState: HTTP ${res.status}`);
+  }
+  return (await res.json()) as TbankGetStateResponse;
+}
+
 /**
  * Проверить подпись webhook-уведомления от T-Bank.
  * В body приходят все поля, включая Token. Считаем по тем же правилам и

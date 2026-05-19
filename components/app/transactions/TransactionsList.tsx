@@ -84,12 +84,14 @@ export function TransactionsList({
   incomeCategories,
   expenseCategories,
   debts,
+  personNames = [],
 }: {
   items: TransactionWithRefs[];
   accounts: AccountOption[];
   incomeCategories: CategoryOption[];
   expenseCategories: CategoryOption[];
   debts: DebtOption[];
+  personNames?: string[];
 }) {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("ALL");
@@ -141,6 +143,7 @@ export function TransactionsList({
             incomeCategories={incomeCategories}
             expenseCategories={expenseCategories}
             debts={debts}
+            personNames={personNames}
             onSuccess={refresh}
           />
         </Modal>
@@ -252,6 +255,7 @@ export function TransactionsList({
           incomeCategories={incomeCategories}
           expenseCategories={expenseCategories}
           debts={debts}
+          personNames={personNames}
           onSuccess={refresh}
         />
       </Modal>
@@ -268,6 +272,7 @@ export function TransactionsList({
             incomeCategories={incomeCategories}
             expenseCategories={expenseCategories}
             debts={debts}
+            personNames={personNames}
             onSuccess={refresh}
           />
         )}
@@ -303,11 +308,13 @@ export function AddTransactionButton({
   incomeCategories,
   expenseCategories,
   debts,
+  personNames = [],
 }: {
   accounts: AccountOption[];
   incomeCategories: CategoryOption[];
   expenseCategories: CategoryOption[];
   debts: DebtOption[];
+  personNames?: string[];
 }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
@@ -324,6 +331,7 @@ export function AddTransactionButton({
           incomeCategories={incomeCategories}
           expenseCategories={expenseCategories}
           debts={debts}
+          personNames={personNames}
           onSuccess={() => {
             setOpen(false);
             router.refresh();

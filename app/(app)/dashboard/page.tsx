@@ -39,6 +39,7 @@ export default async function DashboardPage() {
     monthlyTx,
     recent,
     activeDebts,
+    allDebtPeople,
     assets,
     incomeCategories,
     expenseCategories,
@@ -71,6 +72,12 @@ export default async function DashboardPage() {
         personName: true,
         currency: true,
       },
+    }),
+    prisma.debt.findMany({
+      where: { userId },
+      select: { personName: true },
+      distinct: ["personName"],
+      orderBy: { personName: "asc" },
     }),
     prisma.asset.findMany({ where: { userId }, select: { purchasePrice: true, currentValue: true } }),
     prisma.incomeCategory.findMany({
@@ -122,6 +129,10 @@ export default async function DashboardPage() {
     };
   });
 
+  const personNames = allDebtPeople
+    .map((d) => d.personName)
+    .filter((n): n is string => Boolean(n));
+
   const assetValue = assets.reduce((s, a) => s + decimalToNumber(a.currentValue), 0);
   const assetCost = assets.reduce((s, a) => s + decimalToNumber(a.purchasePrice), 0);
   const assetPct = percentChange(assetValue, assetCost);
@@ -159,6 +170,7 @@ export default async function DashboardPage() {
             incomeCategories={incomeCategories}
             expenseCategories={expenseCategories}
             debts={debtOptions}
+            personNames={personNames}
           />
         }
       />
