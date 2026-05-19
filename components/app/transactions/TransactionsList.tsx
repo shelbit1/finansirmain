@@ -27,6 +27,7 @@ import {
   TransactionForm,
   type AccountOption,
   type CategoryOption,
+  type DebtOption,
   type TransactionDto,
 } from "./TransactionForm";
 
@@ -82,11 +83,13 @@ export function TransactionsList({
   accounts,
   incomeCategories,
   expenseCategories,
+  debts,
 }: {
   items: TransactionWithRefs[];
   accounts: AccountOption[];
   incomeCategories: CategoryOption[];
   expenseCategories: CategoryOption[];
+  debts: DebtOption[];
 }) {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("ALL");
@@ -137,6 +140,7 @@ export function TransactionsList({
             accounts={accounts}
             incomeCategories={incomeCategories}
             expenseCategories={expenseCategories}
+            debts={debts}
             onSuccess={refresh}
           />
         </Modal>
@@ -167,7 +171,7 @@ export function TransactionsList({
           const Icon = conf.icon;
           const category = t.incomeCategory ?? t.expenseCategory;
           const isDebt = isDebtType(t.type);
-          const accountLabel = isDebt
+          const accountName = isDebt
             ? t.toAccount?.name ?? t.fromAccount?.name ?? ""
             : t.type === "INCOME"
             ? t.toAccount?.name
@@ -175,9 +179,12 @@ export function TransactionsList({
             ? t.fromAccount?.name
             : `${t.fromAccount?.name ?? "?"} → ${t.toAccount?.name ?? "?"}`;
           const title = isDebt
-            ? conf.label
+            ? t.personName ?? conf.label
             : category?.name ??
               (t.type === "TRANSFER" ? "Перемещение" : "Без категории");
+          const accountLabel = isDebt
+            ? [conf.label, accountName].filter(Boolean).join(" · ")
+            : accountName;
           const currency =
             t.toAccount?.currency ?? t.fromAccount?.currency ?? "RUB";
 
@@ -244,6 +251,7 @@ export function TransactionsList({
           accounts={accounts}
           incomeCategories={incomeCategories}
           expenseCategories={expenseCategories}
+          debts={debts}
           onSuccess={refresh}
         />
       </Modal>
@@ -259,6 +267,7 @@ export function TransactionsList({
             accounts={accounts}
             incomeCategories={incomeCategories}
             expenseCategories={expenseCategories}
+            debts={debts}
             onSuccess={refresh}
           />
         )}
@@ -293,10 +302,12 @@ export function AddTransactionButton({
   accounts,
   incomeCategories,
   expenseCategories,
+  debts,
 }: {
   accounts: AccountOption[];
   incomeCategories: CategoryOption[];
   expenseCategories: CategoryOption[];
+  debts: DebtOption[];
 }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
@@ -312,6 +323,7 @@ export function AddTransactionButton({
           accounts={accounts}
           incomeCategories={incomeCategories}
           expenseCategories={expenseCategories}
+          debts={debts}
           onSuccess={() => {
             setOpen(false);
             router.refresh();

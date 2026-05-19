@@ -1,6 +1,7 @@
 import "server-only";
 import { Prisma, type TransactionType } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { recalcDebt } from "@/lib/debtRepo";
 
 type CreateInput = {
   userId: string;
@@ -13,6 +14,8 @@ type CreateInput = {
   fromAccountId?: string | null;
   toAccountId?: string | null;
   interestAmount?: number | null;
+  personName?: string | null;
+  debtId?: string | null;
 };
 
 const INTEREST_CATEGORY_NAME = "Проценты по долгу";
@@ -23,6 +26,10 @@ function isIncomingDebt(type: TransactionType): boolean {
 
 function isOutgoingDebt(type: TransactionType): boolean {
   return type === "DEBT_RETURN" || type === "DEBT_GIVE";
+}
+
+function isDebtType(type: TransactionType): boolean {
+  return isIncomingDebt(type) || isOutgoingDebt(type);
 }
 
 async function applyBalance(
@@ -112,6 +119,69 @@ async function getOrCreateInterestCategoryId(
   return created.id;
 }
 
+/** Создаёт запись Debt для DEBT_TAKE/DEBT_GIVE. */
+async function createDebtForOperation(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  type: TransactionType,
+  amount: number,
+  personName: string,
+  dueDate: Date | null,
+  description: string | null,
+) {
+  const direction = type === "DEBT_TAKE" ? "I_OWE" : "OWED_TO_ME";
+  return tx.debt.create({
+    data: {
+      userId,
+      direction,
+      personName,
+      amount,
+      paidAmount: 0,
+      status: "ACTIVE",
+      dueDate: dueDate ?? null,
+      description: description ?? null,
+    },
+  });
+}
+
+/** Создаёт DebtPayment для DEBT_RETURN/DEBT_RECEIVE с проверкой суммы. */
+async function createPaymentForOperation(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  type: TransactionType,
+  debtId: string,
+  amount: number,
+  date: Date,
+  note: string | null,
+) {
+  const expectedDirection = type === "DEBT_RETURN" ? "I_OWE" : "OWED_TO_ME";
+  const debt = await tx.debt.findFirst({
+    where: { id: debtId, userId },
+    include: { payments: true },
+  });
+  if (!debt) throw new Error("Долг не найден");
+  if (debt.direction !== expectedDirection) {
+    throw new Error(
+      type === "DEBT_RETURN"
+        ? "Выбран долг, который не вы должны"
+        : "Выбран долг, который вы должны кому-то",
+    );
+  }
+
+  const paid = debt.payments.reduce(
+    (acc, p) => acc.add(p.amount),
+    new Prisma.Decimal(0),
+  );
+  const newPaid = paid.add(amount);
+  if (newPaid.greaterThan(debt.amount)) {
+    throw new Error("Сумма возврата превышает остаток долга");
+  }
+
+  return tx.debtPayment.create({
+    data: { debtId, amount, date, note: note ?? undefined },
+  });
+}
+
 export async function createTransaction(input: CreateInput) {
   await ensureAccountsBelong(input.userId, [input.fromAccountId, input.toAccountId]);
   await ensureCategoryBelongs(
@@ -122,6 +192,36 @@ export async function createTransaction(input: CreateInput) {
   );
 
   return prisma.$transaction(async (tx) => {
+    let debtId: string | null = null;
+    let debtPaymentId: string | null = null;
+
+    if (input.type === "DEBT_TAKE" || input.type === "DEBT_GIVE") {
+      if (!input.personName) throw new Error("Введите имя человека");
+      const debt = await createDebtForOperation(
+        tx,
+        input.userId,
+        input.type,
+        input.amount,
+        input.personName,
+        null,
+        input.note ?? null,
+      );
+      debtId = debt.id;
+    } else if (input.type === "DEBT_RETURN" || input.type === "DEBT_RECEIVE") {
+      if (!input.debtId) throw new Error("Выберите долг");
+      const payment = await createPaymentForOperation(
+        tx,
+        input.userId,
+        input.type,
+        input.debtId,
+        input.amount,
+        input.date,
+        input.note ?? null,
+      );
+      debtId = input.debtId;
+      debtPaymentId = payment.id;
+    }
+
     const created = await tx.transaction.create({
       data: {
         userId: input.userId,
@@ -143,6 +243,8 @@ export async function createTransaction(input: CreateInput) {
           isOutgoingDebt(input.type)
             ? input.fromAccountId ?? null
             : null,
+        debtId,
+        debtPaymentId,
       },
     });
 
@@ -174,14 +276,11 @@ export async function createTransaction(input: CreateInput) {
           parentId: created.id,
         },
       });
-      await applyBalance(
-        tx,
-        "EXPENSE",
-        interest.amount,
-        interest.fromAccountId,
-        null,
-        1,
-      );
+      await applyBalance(tx, "EXPENSE", interest.amount, interest.fromAccountId, null, 1);
+    }
+
+    if (debtId) {
+      await recalcDebt(tx, debtId);
     }
 
     return created;
@@ -204,9 +303,22 @@ export async function updateTransaction(
   return prisma.$transaction(async (tx) => {
     const old = await tx.transaction.findUnique({
       where: { id },
-      include: { derived: true },
+      include: { derived: true, debt: { include: { payments: true } } },
     });
     if (!old || old.userId !== userId) throw new Error("Операция не найдена");
+
+    // Запрещаем смену типа между долговым и недолговым
+    if (isDebtType(old.type) !== isDebtType(input.type)) {
+      throw new Error(
+        "Нельзя сменить тип на другой класс операций — удалите и создайте заново",
+      );
+    }
+    // Запрещаем смену конкретного подтипа долга (направление меняет связку с Debt)
+    if (isDebtType(old.type) && old.type !== input.type) {
+      throw new Error(
+        "Нельзя сменить тип долговой операции — удалите и создайте заново",
+      );
+    }
 
     await applyBalance(tx, old.type, old.amount, old.fromAccountId, old.toAccountId, -1);
 
@@ -242,6 +354,61 @@ export async function updateTransaction(
       updated.toAccountId,
       1,
     );
+
+    // Синхронизация Debt/DebtPayment
+    if (updated.type === "DEBT_TAKE" || updated.type === "DEBT_GIVE") {
+      if (!old.debtId) throw new Error("Связанный долг не найден");
+      const debt = await tx.debt.findUnique({
+        where: { id: old.debtId },
+        include: { payments: true },
+      });
+      if (!debt) throw new Error("Связанный долг не найден");
+
+      const paidSum = debt.payments.reduce(
+        (acc, p) => acc.add(p.amount),
+        new Prisma.Decimal(0),
+      );
+      if (paidSum.greaterThan(updated.amount)) {
+        throw new Error(
+          "Сумма долга меньше уже учтённых возвратов — сначала удалите возвраты",
+        );
+      }
+      await tx.debt.update({
+        where: { id: old.debtId },
+        data: {
+          amount: updated.amount,
+          personName: input.personName ?? debt.personName,
+        },
+      });
+      await recalcDebt(tx, old.debtId);
+    } else if (updated.type === "DEBT_RETURN" || updated.type === "DEBT_RECEIVE") {
+      if (!old.debtPaymentId || !old.debtId) {
+        throw new Error("Связанный платёж не найден");
+      }
+      await tx.debtPayment.update({
+        where: { id: old.debtPaymentId },
+        data: {
+          amount: updated.amount,
+          date: updated.date,
+          note: updated.note ?? null,
+        },
+      });
+      // Проверим, что после изменения сумма выплат не превышает amount
+      const debt = await tx.debt.findUnique({
+        where: { id: old.debtId },
+        include: { payments: true },
+      });
+      if (debt) {
+        const paid = debt.payments.reduce(
+          (acc, p) => acc.add(p.amount),
+          new Prisma.Decimal(0),
+        );
+        if (paid.greaterThan(debt.amount)) {
+          throw new Error("Сумма возвратов превышает тело долга");
+        }
+      }
+      await recalcDebt(tx, old.debtId);
+    }
 
     // Синхронизация процентов: только когда редактируем DEBT_RETURN
     if (updated.type === "DEBT_RETURN") {
@@ -313,21 +480,6 @@ export async function updateTransaction(
           );
         }
       }
-    } else if (old.type === "DEBT_RETURN" && old.derived.length > 0) {
-      // Тип сменили — снимаем все производные
-      for (const child of old.derived) {
-        await applyBalance(
-          tx,
-          child.type,
-          child.amount,
-          child.fromAccountId,
-          child.toAccountId,
-          -1,
-        );
-      }
-      await tx.transaction.deleteMany({
-        where: { parentId: updated.id },
-      });
     }
 
     return updated;
@@ -338,12 +490,12 @@ export async function deleteTransaction(userId: string, id: string) {
   return prisma.$transaction(async (tx) => {
     const old = await tx.transaction.findUnique({
       where: { id },
-      include: { derived: true },
+      include: { derived: true, debt: { include: { payments: true } } },
     });
     if (!old || old.userId !== userId) throw new Error("Операция не найдена");
 
+    // Откат балансов
     await applyBalance(tx, old.type, old.amount, old.fromAccountId, old.toAccountId, -1);
-
     for (const child of old.derived) {
       await applyBalance(
         tx,
@@ -355,7 +507,36 @@ export async function deleteTransaction(userId: string, id: string) {
       );
     }
 
+    // DEBT_TAKE / DEBT_GIVE — основа долга: запрет если есть выплаты
+    if (
+      (old.type === "DEBT_TAKE" || old.type === "DEBT_GIVE") &&
+      old.debtId &&
+      old.debt &&
+      old.debt.payments.length > 0
+    ) {
+      throw new Error(
+        "Нельзя удалить операцию: у этого долга есть возвраты. Сначала удалите их.",
+      );
+    }
+
+    // Удаляем основную транзакцию (derived удалится каскадом)
     await tx.transaction.delete({ where: { id } });
+
+    // DEBT_TAKE/GIVE — удалить и сам Debt (нет выплат)
+    if ((old.type === "DEBT_TAKE" || old.type === "DEBT_GIVE") && old.debtId) {
+      await tx.debt.delete({ where: { id: old.debtId } });
+    }
+
+    // DEBT_RETURN/RECEIVE — удалить связанный платёж и пересчитать статус
+    if (
+      (old.type === "DEBT_RETURN" || old.type === "DEBT_RECEIVE") &&
+      old.debtPaymentId &&
+      old.debtId
+    ) {
+      await tx.debtPayment.delete({ where: { id: old.debtPaymentId } });
+      await recalcDebt(tx, old.debtId);
+    }
+
     return { ok: true };
   });
 }

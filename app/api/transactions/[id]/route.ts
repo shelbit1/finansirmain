@@ -22,6 +22,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       fromAccountId: data.fromAccountId,
       toAccountId: data.toAccountId,
       interestAmount: data.interestAmount,
+      personName: data.personName,
+      debtId: data.debtId,
     });
     return NextResponse.json({ transaction: tx });
   } catch (e) {

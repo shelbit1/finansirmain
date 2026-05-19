@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import type { TransactionType } from "@prisma/client";
-import { cn, toInputDate } from "@/lib/utils";
+import type { DebtDirection, TransactionType } from "@prisma/client";
+import { cn, formatMoney, toInputDate } from "@/lib/utils";
 import {
   DEBT_LABELS,
   DEBT_TYPES,
@@ -22,10 +22,20 @@ export type TransactionDto = {
   fromAccountId: string | null;
   toAccountId: string | null;
   interestAmount?: number | null;
+  personName?: string | null;
+  debtId?: string | null;
 };
 
 export type AccountOption = { id: string; name: string; icon: string | null };
 export type CategoryOption = { id: string; name: string; icon: string | null };
+export type DebtOption = {
+  id: string;
+  direction: DebtDirection;
+  personName: string;
+  amount: number;
+  remaining: number;
+  currency: string;
+};
 
 type TopTab = "INCOME" | "EXPENSE" | "TRANSFER" | "DEBT";
 
@@ -48,12 +58,14 @@ export function TransactionForm({
   accounts,
   incomeCategories,
   expenseCategories,
+  debts,
   onSuccess,
 }: {
   transaction?: TransactionDto;
   accounts: AccountOption[];
   incomeCategories: CategoryOption[];
   expenseCategories: CategoryOption[];
+  debts: DebtOption[];
   onSuccess: () => void;
 }) {
   const isEdit = Boolean(transaction);
@@ -69,6 +81,17 @@ export function TransactionForm({
 
   const effectiveType: TransactionType =
     tab === "DEBT" ? debtType : (tab as TransactionType);
+
+  const isNewDebt = effectiveType === "DEBT_TAKE" || effectiveType === "DEBT_GIVE";
+  const isDebtPayment =
+    effectiveType === "DEBT_RETURN" || effectiveType === "DEBT_RECEIVE";
+  const debtChoices = debts.filter((d) =>
+    effectiveType === "DEBT_RETURN"
+      ? d.direction === "I_OWE"
+      : effectiveType === "DEBT_RECEIVE"
+      ? d.direction === "OWED_TO_ME"
+      : false,
+  );
   const needsFromAccount =
     effectiveType === "EXPENSE" ||
     effectiveType === "TRANSFER" ||
@@ -109,6 +132,8 @@ export function TransactionForm({
         effectiveType === "DEBT_RETURN"
           ? Number(fd.get("interestAmount") ?? 0) || 0
           : null,
+      personName: isNewDebt ? String(fd.get("personName") ?? "").trim() || null : null,
+      debtId: isDebtPayment ? String(fd.get("debtId") ?? "") || null : null,
     };
 
     try {
@@ -131,6 +156,7 @@ export function TransactionForm({
   };
 
   const accountsEmpty = accounts.length === 0;
+  const noDebtChoices = isDebtPayment && !isEdit && debtChoices.length === 0;
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
@@ -157,6 +183,7 @@ export function TransactionForm({
           <select
             value={debtType}
             onChange={(e) => setDebtType(e.target.value as DebtType)}
+            disabled={isEdit}
             className="input"
             style={{ color: debtColor(debtType) }}
           >
@@ -166,6 +193,70 @@ export function TransactionForm({
               </option>
             ))}
           </select>
+          {isEdit && (
+            <p className="text-xs text-text-muted mt-1">
+              Тип долговой операции изменить нельзя — удалите и создайте заново.
+            </p>
+          )}
+        </div>
+      )}
+
+      {isNewDebt && (
+        <div>
+          <label className="label">Имя человека</label>
+          <input
+            name="personName"
+            type="text"
+            required
+            maxLength={80}
+            defaultValue={transaction?.personName ?? ""}
+            placeholder="Например: Дима"
+            className="input"
+          />
+          <p className="text-xs text-text-muted mt-1">
+            Долг автоматически появится в разделе «Долги».
+          </p>
+        </div>
+      )}
+
+      {isDebtPayment && (
+        <div>
+          <label className="label">Долг</label>
+          {debtChoices.length === 0 && !isEdit ? (
+            <p className="text-text-muted text-sm bg-bg border border-border rounded-lg px-3 py-2">
+              Нет подходящих долгов. Сначала добавьте операцию «
+              {effectiveType === "DEBT_RETURN" ? "Я взял в долг" : "У меня взяли в долг"}
+              ».
+            </p>
+          ) : (
+            <select
+              name="debtId"
+              required
+              defaultValue={transaction?.debtId ?? ""}
+              disabled={isEdit}
+              className="input"
+            >
+              <option value="">Выберите долг</option>
+              {debtChoices.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.personName} — остаток {formatMoney(d.remaining, d.currency)}
+                </option>
+              ))}
+              {/* при редактировании показываем текущую запись, даже если она уже не активна */}
+              {isEdit &&
+                transaction?.debtId &&
+                !debtChoices.some((d) => d.id === transaction.debtId) && (
+                  <option value={transaction.debtId}>
+                    {transaction.personName ?? "Текущий долг"}
+                  </option>
+                )}
+            </select>
+          )}
+          {isEdit && (
+            <p className="text-xs text-text-muted mt-1">
+              Долг, к которому относится возврат, изменить нельзя.
+            </p>
+          )}
         </div>
       )}
 
@@ -323,7 +414,7 @@ export function TransactionForm({
 
       <button
         type="submit"
-        disabled={pending || accountsEmpty}
+        disabled={pending || accountsEmpty || noDebtChoices}
         className="btn btn-primary w-full"
       >
         {pending ? "Сохраняем…" : isEdit ? "Сохранить" : "Добавить операцию"}

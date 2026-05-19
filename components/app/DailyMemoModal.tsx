@@ -31,26 +31,28 @@ export function DailyMemoModal({ show: initialShow }: { show: boolean }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
-      <div className="card max-w-lg w-full max-h-[90dvh] overflow-y-auto p-6 sm:p-8 animate-slide-up">
-        <div className="text-center mb-5">
-          <div className="text-3xl mb-2">📜</div>
-          <h2 className="font-display text-2xl font-bold">Напоминание дня</h2>
-          <p className="text-text-muted text-sm mt-1">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+      <div className="card max-w-lg w-full max-h-[95dvh] overflow-y-auto p-4 sm:p-5 animate-slide-up">
+        <div className="text-center mb-3">
+          <div className="text-2xl leading-none mb-1">📜</div>
+          <h2 className="font-display text-lg sm:text-xl font-bold">
+            Напоминание дня
+          </h2>
+          <p className="text-text-muted text-xs mt-0.5">
             Несколько простых правил, проверенных временем
           </p>
         </div>
 
-        <ol className="space-y-3 mb-6">
+        <ol className="space-y-1.5 mb-3">
           {RULES.map((rule, i) => (
             <li
               key={i}
-              className="flex gap-3 p-3 rounded-lg bg-bg border border-border"
+              className="flex gap-2 px-2.5 py-1.5 rounded-lg bg-bg border border-border"
             >
-              <span className="font-display font-semibold text-primary tabular-nums shrink-0 w-6">
+              <span className="font-display font-semibold text-primary tabular-nums shrink-0 w-5 text-sm">
                 {i + 1}.
               </span>
-              <span className="text-sm leading-relaxed">
+              <span className="text-[13px] leading-snug">
                 <span className="text-asset mr-1">✦</span>
                 {rule}
               </span>
@@ -58,21 +60,23 @@ export function DailyMemoModal({ show: initialShow }: { show: boolean }) {
           ))}
         </ol>
 
-        <label className="flex items-start gap-3 px-3 py-3 rounded-lg bg-bg border border-border cursor-pointer mb-4">
+        <label className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-bg border border-border cursor-pointer mb-2.5">
           <input
             type="checkbox"
             checked={agreed}
             onChange={(e) => setAgreed(e.target.checked)}
-            className="mt-0.5 w-4 h-4 accent-primary cursor-pointer"
+            className="w-4 h-4 accent-primary cursor-pointer shrink-0"
           />
-          <span className="text-sm">Я прочитал(а) и принимаю эти правила</span>
+          <span className="text-[13px] leading-tight">
+            Я прочитал(а) и принимаю эти правила
+          </span>
         </label>
 
         <button
           type="button"
           onClick={onContinue}
           disabled={!agreed || pending}
-          className="btn btn-primary w-full"
+          className="btn btn-primary w-full h-10"
         >
           {pending ? "Сохраняем…" : "Продолжить"}
         </button>

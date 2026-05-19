@@ -21,6 +21,7 @@ import {
 } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { AddTransactionButton } from "@/components/app/transactions/TransactionsList";
+import type { DebtOption } from "@/components/app/transactions/TransactionForm";
 import { DailyChart } from "@/components/app/dashboard/DailyChart";
 
 export const metadata = { title: "Дашборд — Финансыр" };
@@ -61,7 +62,14 @@ export default async function DashboardPage() {
     }),
     prisma.debt.findMany({
       where: { userId, status: { not: "CLOSED" } },
-      select: { direction: true, amount: true, paidAmount: true },
+      select: {
+        id: true,
+        direction: true,
+        amount: true,
+        paidAmount: true,
+        personName: true,
+        currency: true,
+      },
     }),
     prisma.asset.findMany({ where: { userId }, select: { purchasePrice: true, currentValue: true } }),
     prisma.incomeCategory.findMany({
@@ -100,6 +108,19 @@ export default async function DashboardPage() {
     .filter((d) => d.direction === "OWED_TO_ME")
     .reduce((s, d) => s + (decimalToNumber(d.amount) - decimalToNumber(d.paidAmount)), 0);
 
+  const debtOptions: DebtOption[] = activeDebts.map((d) => {
+    const amount = decimalToNumber(d.amount);
+    const paid = decimalToNumber(d.paidAmount);
+    return {
+      id: d.id,
+      direction: d.direction,
+      personName: d.personName,
+      amount,
+      remaining: Math.max(amount - paid, 0),
+      currency: d.currency,
+    };
+  });
+
   const assetValue = assets.reduce((s, a) => s + decimalToNumber(a.currentValue), 0);
   const assetCost = assets.reduce((s, a) => s + decimalToNumber(a.purchasePrice), 0);
   const assetPct = percentChange(assetValue, assetCost);
@@ -136,6 +157,7 @@ export default async function DashboardPage() {
             accounts={accountOpts}
             incomeCategories={incomeCategories}
             expenseCategories={expenseCategories}
+            debts={debtOptions}
           />
         }
       />

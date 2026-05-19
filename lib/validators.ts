@@ -64,6 +64,14 @@ export const transactionSchema = z
     fromAccountId: z.string().optional().nullable(),
     toAccountId: z.string().optional().nullable(),
     interestAmount: z.coerce.number().nonnegative("Сумма не может быть отрицательной").optional().nullable(),
+    personName: z
+      .string()
+      .trim()
+      .max(80, "Слишком длинное имя")
+      .optional()
+      .nullable()
+      .transform((v) => (v && v.length > 0 ? v : null)),
+    debtId: z.string().optional().nullable(),
   })
   .superRefine((data, ctx) => {
     if (data.type === "INCOME") {
@@ -125,6 +133,26 @@ export const transactionSchema = z
           code: "custom",
           path: ["fromAccountId"],
           message: "Выберите счёт списания",
+        });
+      }
+    }
+    // Новый долг: нужно имя
+    if (data.type === "DEBT_TAKE" || data.type === "DEBT_GIVE") {
+      if (!data.personName) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["personName"],
+          message: "Введите имя человека",
+        });
+      }
+    }
+    // Возврат/получение: нужен выбранный долг
+    if (data.type === "DEBT_RETURN" || data.type === "DEBT_RECEIVE") {
+      if (!data.debtId) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["debtId"],
+          message: "Выберите долг",
         });
       }
     }
