@@ -1,0 +1,261 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ПОЛЬЗОВАТЕЛЬ ────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts          Account[]
+  incomeCategories  IncomeCategory[]
+  expenseCategories ExpenseCategory[]
+  transactions      Transaction[]
+  dailyCheckIns     DailyCheckIn[]
+  debts             Debt[]
+  assets            Asset[]
+  assetValueHistory AssetValueHistory[]
+  plans             Plan[]
+}
+
+// ─── СЧЁТ ────────────────────────────────────────────────────────────────────
+
+model Account {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  currency  String   @default("RUB")
+  balance   Decimal  @default(0) @db.Decimal(18, 2)
+  icon      String?
+  color     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionsFrom Transaction[] @relation("FromAccount")
+  transactionsTo   Transaction[] @relation("ToAccount")
+
+  @@index([userId])
+}
+
+// ─── КАТЕГОРИИ ───────────────────────────────────────────────────────────────
+
+model IncomeCategory {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  icon      String?
+  color     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([userId])
+}
+
+model ExpenseCategory {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  icon      String?
+  color     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([userId])
+}
+
+// ─── ОПЕРАЦИИ ────────────────────────────────────────────────────────────────
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+  DEBT_TAKE     // Я взял в долг (+balance)
+  DEBT_RETURN   // Я вернул долг — тело (−balance)
+  DEBT_GIVE     // У меня взяли в долг (−balance)
+  DEBT_RECEIVE  // Мне вернули долг (+balance)
+}
+
+model Transaction {
+  id     String          @id @default(cuid())
+  userId String
+  type   TransactionType
+  amount Decimal         @db.Decimal(18, 2)
+  date   DateTime
+  note   String?
+
+  incomeCategoryId String?
+  incomeCategory   IncomeCategory? @relation(fields: [incomeCategoryId], references: [id], onDelete: SetNull)
+  toAccountId      String?
+  toAccount        Account?        @relation("ToAccount", fields: [toAccountId], references: [id], onDelete: SetNull)
+
+  expenseCategoryId String?
+  expenseCategory   ExpenseCategory? @relation(fields: [expenseCategoryId], references: [id], onDelete: SetNull)
+  fromAccountId     String?
+  fromAccount       Account?         @relation("FromAccount", fields: [fromAccountId], references: [id], onDelete: SetNull)
+
+  // Связка «тело долга → проценты»: дочерняя запись удаляется каскадом
+  parentId String?
+  parent   Transaction?  @relation("DerivedTransactions", fields: [parentId], references: [id], onDelete: Cascade)
+  derived  Transaction[] @relation("DerivedTransactions")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@index([type])
+  @@index([parentId])
+}
+
+// ─── ЕЖЕДНЕВНАЯ ПАМЯТКА ──────────────────────────────────────────────────────
+
+model DailyCheckIn {
+  id        String   @id @default(cuid())
+  userId    String
+  date      String   // YYYY-MM-DD
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+}
+
+// ─── ДОЛГИ ───────────────────────────────────────────────────────────────────
+
+enum DebtDirection {
+  I_OWE
+  OWED_TO_ME
+}
+
+enum DebtStatus {
+  ACTIVE
+  PARTIALLY_PAID
+  CLOSED
+}
+
+model Debt {
+  id          String        @id @default(cuid())
+  userId      String
+  direction   DebtDirection
+  personName  String
+  amount      Decimal       @db.Decimal(18, 2)
+  currency    String        @default("RUB")
+  dueDate     DateTime?
+  description String?
+  status      DebtStatus    @default(ACTIVE)
+  paidAmount  Decimal       @default(0) @db.Decimal(18, 2)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments DebtPayment[]
+
+  @@index([userId, status])
+}
+
+model DebtPayment {
+  id        String   @id @default(cuid())
+  debtId    String
+  amount    Decimal  @db.Decimal(18, 2)
+  date      DateTime
+  note      String?
+  createdAt DateTime @default(now())
+
+  debt Debt @relation(fields: [debtId], references: [id], onDelete: Cascade)
+
+  @@index([debtId, date])
+}
+
+// ─── ПЛАНЫ ───────────────────────────────────────────────────────────────────
+
+enum PlanType {
+  PLAN_INCOME
+  PLAN_EXPENSE
+}
+
+model Plan {
+  id          String    @id @default(cuid())
+  userId      String
+  type        PlanType
+  title       String
+  amount      Decimal   @db.Decimal(18, 2)
+  currency    String    @default("RUB")
+  dueDate     DateTime?
+  note        String?
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, completed])
+  @@index([userId, type])
+}
+
+// ─── АКТИВЫ ──────────────────────────────────────────────────────────────────
+
+enum AssetType {
+  REAL_ESTATE
+  VEHICLE
+  STOCKS
+  CRYPTO
+  DEPOSIT
+  BUSINESS
+  PRECIOUS
+  OTHER
+}
+
+model Asset {
+  id            String    @id @default(cuid())
+  userId        String
+  name          String
+  type          AssetType
+  purchasePrice Decimal   @db.Decimal(18, 2)
+  currentValue  Decimal   @db.Decimal(18, 2)
+  currency      String    @default("RUB")
+  purchaseDate  DateTime?
+  quantity      Decimal?  @default(1) @db.Decimal(18, 4)
+  unit          String?
+  description   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  valueHistory AssetValueHistory[]
+
+  @@index([userId, type])
+}
+
+model AssetValueHistory {
+  id        String   @id @default(cuid())
+  assetId   String
+  userId    String
+  value     Decimal  @db.Decimal(18, 2)
+  date      DateTime
+  note      String?
+  createdAt DateTime @default(now())
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, date])
+}
