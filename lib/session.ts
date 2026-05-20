@@ -3,7 +3,11 @@ import { cookies } from "next/headers";
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 
 const SESSION_COOKIE = "finansir_session";
-const SESSION_TTL_DAYS = 30;
+
+/** Срок при включённом «Запомнить меня». */
+const REMEMBER_TTL_DAYS = 30;
+/** Срок сессии без галочки (на случай долго открытой вкладки). */
+const BRIEF_TTL_DAYS = 1;
 
 function getKey(): Uint8Array {
   const secret = process.env.SESSION_SECRET;
@@ -17,18 +21,25 @@ export interface SessionPayload extends JWTPayload {
   userId: string;
 }
 
-export async function encryptSession(payload: SessionPayload): Promise<string> {
+export async function encryptSession(
+  payload: SessionPayload,
+  ttlDays: number,
+): Promise<string> {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime(`${SESSION_TTL_DAYS}d`)
+    .setExpirationTime(`${ttlDays}d`)
     .sign(getKey());
 }
 
-export async function decryptSession(token: string | undefined): Promise<SessionPayload | null> {
+export async function decryptSession(
+  token: string | undefined,
+): Promise<SessionPayload | null> {
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, getKey(), { algorithms: ["HS256"] });
+    const { payload } = await jwtVerify(token, getKey(), {
+      algorithms: ["HS256"],
+    });
     if (typeof payload.userId !== "string") return null;
     return payload as SessionPayload;
   } catch {
@@ -36,18 +47,31 @@ export async function decryptSession(token: string | undefined): Promise<Session
   }
 }
 
-export async function createSession(userId: string): Promise<void> {
-  const expiresAt = new Date(Date.now() + SESSION_TTL_DAYS * 24 * 60 * 60 * 1000);
-  const token = await encryptSession({ userId });
+export async function createSession(
+  userId: string,
+  options?: { remember?: boolean },
+): Promise<void> {
+  const remember = options?.remember ?? true;
+  const ttlDays = remember ? REMEMBER_TTL_DAYS : BRIEF_TTL_DAYS;
+  const token = await encryptSession({ userId }, ttlDays);
   const store = await cookies();
 
-  store.set(SESSION_COOKIE, token, {
+  const base = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    expires: expiresAt,
+    sameSite: "lax" as const,
     path: "/",
-  });
+  };
+
+  if (remember) {
+    store.set(SESSION_COOKIE, token, {
+      ...base,
+      maxAge: REMEMBER_TTL_DAYS * 24 * 60 * 60,
+    });
+  } else {
+    // Без maxAge/expires — cookie сессии браузера (до закрытия)
+    store.set(SESSION_COOKIE, token, base);
+  }
 }
 
 export async function destroySession(): Promise<void> {

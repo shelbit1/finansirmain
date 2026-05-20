@@ -46,6 +46,16 @@ export function LoginForm() {
         )}
       </div>
 
+      <label className="flex items-center gap-2.5 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          name="rememberMe"
+          defaultChecked
+          className="w-4 h-4 accent-primary cursor-pointer shrink-0"
+        />
+        <span className="text-sm text-text-muted">Запомнить меня</span>
+      </label>
+
       {state?.message && (
         <p className="text-expense text-sm bg-expense/8 border border-expense/20 rounded-lg px-3 py-2">
           {state.message}

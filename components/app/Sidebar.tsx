@@ -34,14 +34,14 @@ export function Sidebar({ userName, userEmail }: { userName: string; userEmail: 
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-border bg-surface">
-      <div className="px-5 py-5 border-b border-border">
+    <aside className="hidden md:flex w-64 shrink-0 h-dvh flex-col border-r border-border bg-surface">
+      <div className="shrink-0 px-5 py-5 border-b border-border">
         <Link href="/dashboard" className="font-display text-xl font-semibold tracking-tight">
           Финансыр
         </Link>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
+      <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-0.5">
         {NAV.map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
@@ -62,7 +62,7 @@ export function Sidebar({ userName, userEmail }: { userName: string; userEmail: 
         })}
       </nav>
 
-      <div className="border-t border-border p-3">
+      <div className="shrink-0 border-t border-border p-3">
         <div className="px-2 py-2">
           <p className="text-sm font-medium truncate">{userName}</p>
           <p className="text-xs text-text-muted truncate">{userEmail}</p>

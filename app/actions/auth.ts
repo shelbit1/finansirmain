@@ -48,7 +48,7 @@ export async function registerAction(
   });
 
   await seedDefaultsForUser(user.id);
-  await createSession(user.id);
+  await createSession(user.id, { remember: true });
   redirect("/dashboard");
 }
 
@@ -76,7 +76,9 @@ export async function loginAction(
     return { message: "Неверный e-mail или пароль" };
   }
 
-  await createSession(user.id);
+  const remember =
+    formData.get("rememberMe") === "on" || formData.get("rememberMe") === "true";
+  await createSession(user.id, { remember });
   redirect("/dashboard");
 }
 
