@@ -1,12 +1,12 @@
 meta:
-  environment: nodejs
+  environment: node
   toolchain:
-    name: node
+    name: npm
     version: 20
 
 build:
-  command: npm ci && npm run build
+  additionalCommands: npm run build
 
 run:
   command: npm start
-  port: 3000
+  containerPort: 3000

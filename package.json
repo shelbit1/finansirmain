@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/",
-    "start": "HOSTNAME=0.0.0.0 PORT=3000 node .next/standalone/server.js",
+    "build": "next build && npm run copy:standalone",
+    "copy:standalone": "cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/",
+    "start": "sh scripts/start.sh",
     "lint": "eslint",
     "db:generate": "dotenv -e .env.local -- prisma generate",
     "db:push": "dotenv -e .env.local -- prisma db push",
