@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { CreditCard } from "lucide-react";
+import { PLAN_PRICE_RUB } from "@/lib/planPricing";
+import { formatMoney } from "@/lib/utils";
 
 export function CheckoutButton({
-  label = "Оплатить 500 ₽",
+  label = `Оплатить ${formatMoney(PLAN_PRICE_RUB)}`,
   className,
 }: {
   label?: string;

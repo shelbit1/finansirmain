@@ -3,10 +3,12 @@ import type { Payment, PaymentStatus, Subscription } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { mapTbankStatus } from "@/lib/tbank";
 
-export const PLAN_PRICE_RUB = 10;
-export const PLAN_PRICE_KOPECKS = PLAN_PRICE_RUB * 100;
-export const PLAN_PERIOD_MONTHS = 1;
-export const TRIAL_DAYS = 7;
+export {
+  PLAN_PERIOD_MONTHS,
+  PLAN_PRICE_KOPECKS,
+  PLAN_PRICE_RUB,
+  TRIAL_DAYS,
+} from "@/lib/planPricing";
 
 export type SubscriptionView = {
   status: "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED";

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { AlertTriangle, Clock } from "lucide-react";
 import type { SubscriptionView } from "@/lib/billing";
+import { PLAN_PRICE_RUB } from "@/lib/planPricing";
+import { formatMoney } from "@/lib/utils";
 
 export function SubscriptionBanner({ view }: { view: SubscriptionView }) {
   if (view.expired) {
@@ -10,7 +12,8 @@ export function SubscriptionBanner({ view }: { view: SubscriptionView }) {
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium">Подписка истекла</p>
           <p className="text-xs text-text-muted mt-0.5">
-            Чтобы вернуть доступ ко всем разделам — оплатите 500 ₽ за месяц.
+            Чтобы вернуть доступ ко всем разделам — оплатите{" "}
+            {formatMoney(PLAN_PRICE_RUB)} за месяц.
           </p>
         </div>
         <Link href="/billing" className="btn btn-primary h-9 px-3 text-sm shrink-0">
