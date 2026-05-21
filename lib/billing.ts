@@ -3,12 +3,19 @@ import type { Payment, PaymentStatus, Subscription } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { mapTbankStatus } from "@/lib/tbank";
 
-export {
+import {
   PLAN_PERIOD_MONTHS,
   PLAN_PRICE_KOPECKS,
   PLAN_PRICE_RUB,
   TRIAL_DAYS,
 } from "@/lib/planPricing";
+
+export {
+  PLAN_PERIOD_MONTHS,
+  PLAN_PRICE_KOPECKS,
+  PLAN_PRICE_RUB,
+  TRIAL_DAYS,
+};
 
 export type SubscriptionView = {
   status: "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED";
