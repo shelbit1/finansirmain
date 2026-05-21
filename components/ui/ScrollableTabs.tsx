@@ -14,7 +14,7 @@ export function ScrollableTabs({
         className,
       )}
     >
-      <div className="inline-flex p-1 bg-bg border border-border rounded-xl">
+      <div className="inline-flex gap-1 p-1 bg-bg border border-border rounded-xl min-w-full sm:min-w-0">
         {children}
       </div>
     </div>

@@ -27,6 +27,7 @@ export default async function TransactionsPage() {
           toAccount: { select: { id: true, name: true, icon: true, color: true, currency: true } },
           derived: { select: { amount: true } },
           debt: { select: { id: true, personName: true, direction: true } },
+          asset: { select: { id: true, name: true, type: true } },
         },
       }),
       prisma.account.findMany({
@@ -90,6 +91,9 @@ export default async function TransactionsPage() {
         : null,
     personName: t.debt?.personName ?? null,
     debtId: t.debtId,
+    assetId: t.assetId,
+    assetName: t.asset?.name ?? null,
+    assetType: t.asset?.type ?? null,
     incomeCategory: t.incomeCategory,
     expenseCategory: t.expenseCategory,
     fromAccount: t.fromAccount,

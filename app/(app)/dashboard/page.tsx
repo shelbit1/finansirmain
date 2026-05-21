@@ -64,6 +64,7 @@ export default async function DashboardPage() {
         fromAccount: { select: { name: true, currency: true } },
         toAccount: { select: { name: true, currency: true } },
         debt: { select: { personName: true } },
+        asset: { select: { name: true } },
       },
     }),
     prisma.debt.findMany({
@@ -278,8 +279,11 @@ export default async function DashboardPage() {
                 const Icon = conf.icon;
                 const cat = t.incomeCategory ?? t.expenseCategory;
                 const isDebt = isDebtType(t.type);
+                const isAsset = t.type === "ASSET_BUY";
                 const title = isDebt
                   ? t.debt?.personName ?? conf.label
+                  : isAsset
+                  ? t.asset?.name ?? conf.label
                   : cat?.name ??
                     (t.type === "TRANSFER" ? "Перемещение" : "—");
                 const currency =
@@ -290,7 +294,7 @@ export default async function DashboardPage() {
                       className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
                       style={{ background: `color-mix(in srgb, ${conf.color} 14%, transparent)` }}
                     >
-                      {!isDebt && cat?.icon ? (
+                      {!isDebt && !isAsset && cat?.icon ? (
                         <span className="text-lg">{cat.icon}</span>
                       ) : (
                         <Icon className="w-4 h-4" style={{ color: conf.color }} />
@@ -300,7 +304,7 @@ export default async function DashboardPage() {
                       <p className="font-medium text-sm truncate">{title}</p>
                       <p className="text-xs text-text-muted truncate">
                         {formatDateShort(t.date)}
-                        {isDebt ? ` · ${conf.label}` : ""}
+                        {isDebt || isAsset ? ` · ${conf.label}` : ""}
                         {t.note ? ` · ${t.note}` : ""}
                       </p>
                     </div>

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { decimalToNumber } from "@/lib/utils";
 import { getUserIdOrUnauthorized, handleZod, jsonError, readJson } from "@/lib/api";
 import { assetSchema } from "@/lib/validators";
+import { addAssetValue } from "@/lib/assetRepo";
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const auth = await getUserIdOrUnauthorized();
@@ -14,6 +16,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   try {
     const body = await readJson(req);
     const data = assetSchema.partial().parse(body);
+
     const asset = await prisma.asset.update({
       where: { id },
       data: {
@@ -27,6 +30,20 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         description: data.description,
       },
     });
+
+    // Если меняется текущая стоимость — добавляем запись в историю и обновляем актив.
+    if (
+      typeof data.currentValue === "number" &&
+      data.currentValue !== decimalToNumber(existing.currentValue)
+    ) {
+      const updated = await addAssetValue(auth.userId, id, {
+        value: data.currentValue,
+        date: new Date(),
+        note: "Корректировка",
+      });
+      return NextResponse.json({ asset: updated });
+    }
+
     return NextResponse.json({ asset });
   } catch (e) {
     const zod = handleZod(e);

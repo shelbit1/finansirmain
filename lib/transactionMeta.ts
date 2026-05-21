@@ -1,5 +1,5 @@
 import type { TransactionType } from "@prisma/client";
-import { ArrowDown, ArrowLeftRight, ArrowUp, HandCoins } from "lucide-react";
+import { ArrowDown, ArrowLeftRight, ArrowUp, Coins, HandCoins } from "lucide-react";
 import type { ComponentType, CSSProperties } from "react";
 
 export const DEBT_TYPES = [
@@ -48,7 +48,10 @@ export type TransactionTypeConfig = {
   label: string;
 };
 
-const BASE_CONFIG: Record<"INCOME" | "EXPENSE" | "TRANSFER", TransactionTypeConfig> = {
+const BASE_CONFIG: Record<
+  "INCOME" | "EXPENSE" | "TRANSFER" | "ASSET_BUY",
+  TransactionTypeConfig
+> = {
   INCOME: { icon: ArrowDown, color: "var(--color-income)", sign: "+", label: "Доход" },
   EXPENSE: { icon: ArrowUp, color: "var(--color-expense)", sign: "−", label: "Расход" },
   TRANSFER: {
@@ -56,6 +59,12 @@ const BASE_CONFIG: Record<"INCOME" | "EXPENSE" | "TRANSFER", TransactionTypeConf
     color: "var(--color-transfer)",
     sign: "",
     label: "Перемещение",
+  },
+  ASSET_BUY: {
+    icon: Coins,
+    color: "var(--color-asset)",
+    sign: "−",
+    label: "Покупка актива",
   },
 };
 
@@ -68,5 +77,5 @@ export function getTransactionTypeConfig(t: TransactionType): TransactionTypeCon
       label: DEBT_LABELS[t],
     };
   }
-  return BASE_CONFIG[t as "INCOME" | "EXPENSE" | "TRANSFER"];
+  return BASE_CONFIG[t as "INCOME" | "EXPENSE" | "TRANSFER" | "ASSET_BUY"];
 }

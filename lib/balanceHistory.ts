@@ -203,6 +203,10 @@ export async function computeBalanceHistory(
           if (tx.toAccountId)
             balanceMap.set(tx.toAccountId, (balanceMap.get(tx.toAccountId) ?? 0) - amount);
           break;
+        case "ASSET_BUY":
+          if (tx.fromAccountId)
+            balanceMap.set(tx.fromAccountId, (balanceMap.get(tx.fromAccountId) ?? 0) + amount);
+          break;
       }
       txIdx++;
     }

@@ -44,7 +44,7 @@ export function AssetForm({
       currentValue: Number(fd.get("currentValue") ?? 0),
       currency: String(fd.get("currency") ?? "RUB"),
       purchaseDate: String(fd.get("purchaseDate") ?? ""),
-      quantity: qty ? Number(qty) : null,
+      quantity: qty ? Number(qty) : undefined,
       unit: String(fd.get("unit") ?? "") || undefined,
       description: String(fd.get("description") ?? "") || undefined,
     };
@@ -120,15 +120,14 @@ export function AssetForm({
           />
         </div>
         <div>
-          <label className="label">{isEdit ? "Изменить стоимость через модал «Обновить»" : "Текущая стоимость"}</label>
+          <label className="label">Текущая стоимость</label>
           <input
             name="currentValue"
             type="number"
             step="0.01"
             min="0"
             inputMode="decimal"
-            required={!isEdit}
-            disabled={isEdit}
+            required
             defaultValue={asset?.currentValue ?? ""}
             placeholder="0,00"
             className="input tnum"

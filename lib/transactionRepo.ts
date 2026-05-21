@@ -1,7 +1,13 @@
 import "server-only";
-import { Prisma, type TransactionType } from "@prisma/client";
+import { Prisma, type AssetType, type TransactionType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { recalcDebt } from "@/lib/debtRepo";
+
+type AssetData = {
+  name: string;
+  type: AssetType;
+  currency: string;
+};
 
 type CreateInput = {
   userId: string;
@@ -16,6 +22,7 @@ type CreateInput = {
   interestAmount?: number | null;
   personName?: string | null;
   debtId?: string | null;
+  assetData?: AssetData | null;
 };
 
 const INTEREST_CATEGORY_NAME = "Проценты по долгу";
@@ -47,7 +54,10 @@ async function applyBalance(
       where: { id: toAccountId },
       data: { balance: { increment: dec } },
     });
-  } else if ((type === "EXPENSE" || isOutgoingDebt(type)) && fromAccountId) {
+  } else if (
+    (type === "EXPENSE" || isOutgoingDebt(type) || type === "ASSET_BUY") &&
+    fromAccountId
+  ) {
     await tx.account.update({
       where: { id: fromAccountId },
       data: { balance: { decrement: dec } },
@@ -194,8 +204,33 @@ export async function createTransaction(input: CreateInput) {
   return prisma.$transaction(async (tx) => {
     let debtId: string | null = null;
     let debtPaymentId: string | null = null;
+    let assetId: string | null = null;
 
-    if (input.type === "DEBT_TAKE" || input.type === "DEBT_GIVE") {
+    if (input.type === "ASSET_BUY") {
+      if (!input.fromAccountId) throw new Error("Выберите счёт списания");
+      if (!input.assetData) throw new Error("Заполните данные актива");
+      const asset = await tx.asset.create({
+        data: {
+          userId: input.userId,
+          name: input.assetData.name,
+          type: input.assetData.type,
+          purchasePrice: input.amount,
+          currentValue: input.amount,
+          currency: input.assetData.currency,
+          purchaseDate: input.date,
+        },
+      });
+      await tx.assetValueHistory.create({
+        data: {
+          assetId: asset.id,
+          userId: input.userId,
+          value: input.amount,
+          date: input.date,
+          note: "Покупка",
+        },
+      });
+      assetId = asset.id;
+    } else if (input.type === "DEBT_TAKE" || input.type === "DEBT_GIVE") {
       if (!input.personName) throw new Error("Введите имя человека");
       const debt = await createDebtForOperation(
         tx,
@@ -240,11 +275,13 @@ export async function createTransaction(input: CreateInput) {
         fromAccountId:
           input.type === "EXPENSE" ||
           input.type === "TRANSFER" ||
-          isOutgoingDebt(input.type)
+          isOutgoingDebt(input.type) ||
+          input.type === "ASSET_BUY"
             ? input.fromAccountId ?? null
             : null,
         debtId,
         debtPaymentId,
+        assetId,
       },
     });
 
@@ -319,6 +356,12 @@ export async function updateTransaction(
         "Нельзя сменить тип долговой операции — удалите и создайте заново",
       );
     }
+    // Запрещаем смену типа покупки актива на другой и наоборот
+    if ((old.type === "ASSET_BUY") !== (input.type === "ASSET_BUY")) {
+      throw new Error(
+        "Нельзя сменить тип на другой класс операций — удалите и создайте заново",
+      );
+    }
 
     await applyBalance(tx, old.type, old.amount, old.fromAccountId, old.toAccountId, -1);
 
@@ -340,11 +383,33 @@ export async function updateTransaction(
         fromAccountId:
           input.type === "EXPENSE" ||
           input.type === "TRANSFER" ||
-          isOutgoingDebt(input.type)
+          isOutgoingDebt(input.type) ||
+          input.type === "ASSET_BUY"
             ? input.fromAccountId ?? null
             : null,
       },
     });
+
+    // Синхронизация связанного актива при изменении суммы/даты ASSET_BUY
+    if (updated.type === "ASSET_BUY" && old.assetId) {
+      await tx.asset.update({
+        where: { id: old.assetId },
+        data: {
+          purchasePrice: updated.amount,
+          purchaseDate: updated.date,
+        },
+      });
+      const firstValue = await tx.assetValueHistory.findFirst({
+        where: { assetId: old.assetId },
+        orderBy: { date: "asc" },
+      });
+      if (firstValue) {
+        await tx.assetValueHistory.update({
+          where: { id: firstValue.id },
+          data: { value: updated.amount, date: updated.date },
+        });
+      }
+    }
 
     await applyBalance(
       tx,
@@ -535,6 +600,11 @@ export async function deleteTransaction(userId: string, id: string) {
     ) {
       await tx.debtPayment.delete({ where: { id: old.debtPaymentId } });
       await recalcDebt(tx, old.debtId);
+    }
+
+    // ASSET_BUY — удалить связанный актив (история стоимости каскадом)
+    if (old.type === "ASSET_BUY" && old.assetId) {
+      await tx.asset.delete({ where: { id: old.assetId } });
     }
 
     return { ok: true };

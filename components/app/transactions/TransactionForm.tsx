@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import type { DebtDirection, TransactionType } from "@prisma/client";
+import type { AssetType, DebtDirection, TransactionType } from "@prisma/client";
 import { cn, formatMoney, toInputDate } from "@/lib/utils";
 import {
   DEBT_LABELS,
@@ -10,6 +10,10 @@ import {
   isDebtType,
   type DebtType,
 } from "@/lib/transactionMeta";
+import { ASSET_TYPE_LIST } from "@/lib/assetTypes";
+
+/** Ширина модалки с формой операции — все 5 вкладок помещаются в одну строку */
+export const TRANSACTION_MODAL_MAX_WIDTH = "max-w-2xl";
 
 export type TransactionDto = {
   id: string;
@@ -24,6 +28,9 @@ export type TransactionDto = {
   interestAmount?: number | null;
   personName?: string | null;
   debtId?: string | null;
+  assetId?: string | null;
+  assetName?: string | null;
+  assetType?: AssetType | null;
 };
 
 export type AccountOption = { id: string; name: string; icon: string | null };
@@ -37,19 +44,21 @@ export type DebtOption = {
   currency: string;
 };
 
-type TopTab = "INCOME" | "EXPENSE" | "TRANSFER" | "DEBT";
+type TopTab = "INCOME" | "EXPENSE" | "TRANSFER" | "DEBT" | "ASSET_BUY";
 
 const TOP_TABS: { id: TopTab; label: string; color: string }[] = [
   { id: "INCOME", label: "Доход", color: "var(--color-income)" },
   { id: "EXPENSE", label: "Расход", color: "var(--color-expense)" },
   { id: "TRANSFER", label: "Перемещение", color: "var(--color-transfer)" },
   { id: "DEBT", label: "Долг", color: "var(--color-debt-owe)" },
+  { id: "ASSET_BUY", label: "Актив", color: "var(--color-asset)" },
 ];
 
 function topTabForType(t: TransactionType): TopTab {
   if (isDebtType(t)) return "DEBT";
   if (t === "INCOME") return "INCOME";
   if (t === "TRANSFER") return "TRANSFER";
+  if (t === "ASSET_BUY") return "ASSET_BUY";
   return "EXPENSE";
 }
 
@@ -78,6 +87,7 @@ export function TransactionForm({
   const [debtType, setDebtType] = useState<DebtType>(
     transaction && isDebtType(transaction.type) ? (transaction.type as DebtType) : "DEBT_TAKE",
   );
+  const [assetType, setAssetType] = useState<AssetType>("REAL_ESTATE");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -87,6 +97,8 @@ export function TransactionForm({
   const isNewDebt = effectiveType === "DEBT_TAKE" || effectiveType === "DEBT_GIVE";
   const isDebtPayment =
     effectiveType === "DEBT_RETURN" || effectiveType === "DEBT_RECEIVE";
+  const isAssetBuy = effectiveType === "ASSET_BUY";
+  const isAssetBuyCreate = isAssetBuy && !isEdit;
   const debtChoices = debts.filter((d) =>
     effectiveType === "DEBT_RETURN"
       ? d.direction === "I_OWE"
@@ -98,7 +110,8 @@ export function TransactionForm({
     effectiveType === "EXPENSE" ||
     effectiveType === "TRANSFER" ||
     effectiveType === "DEBT_RETURN" ||
-    effectiveType === "DEBT_GIVE";
+    effectiveType === "DEBT_GIVE" ||
+    effectiveType === "ASSET_BUY";
   const needsToAccount =
     effectiveType === "INCOME" ||
     effectiveType === "TRANSFER" ||
@@ -136,6 +149,13 @@ export function TransactionForm({
           : null,
       personName: isNewDebt ? String(fd.get("personName") ?? "").trim() || null : null,
       debtId: isDebtPayment ? String(fd.get("debtId") ?? "") || null : null,
+      assetData: isAssetBuyCreate
+        ? {
+            name: String(fd.get("assetName") ?? "").trim(),
+            type: assetType,
+            currency: String(fd.get("assetCurrency") ?? "RUB"),
+          }
+        : null,
     };
 
     try {
@@ -162,15 +182,17 @@ export function TransactionForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <div className="grid grid-cols-4 gap-1 p-1 bg-bg border border-border rounded-xl">
+      <div className="flex gap-1.5 p-1.5 bg-bg border border-border rounded-xl w-full">
         {TOP_TABS.map((t) => (
           <button
             type="button"
             key={t.id}
             onClick={() => setTab(t.id)}
             className={cn(
-              "py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap",
-              tab === t.id ? "bg-surface shadow-sm" : "text-text-muted",
+              "flex-1 min-w-0 py-2 px-1 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap text-center transition-colors",
+              tab === t.id
+                ? "bg-surface shadow-sm"
+                : "text-text-muted hover:text-text",
             )}
             style={tab === t.id ? { color: t.color } : undefined}
           >
@@ -273,10 +295,69 @@ export function TransactionForm({
         </div>
       )}
 
+      {isAssetBuyCreate && (
+        <>
+          <div>
+            <label className="label">Название актива</label>
+            <input
+              name="assetName"
+              type="text"
+              required
+              maxLength={80}
+              placeholder="Квартира на Ленина / BTC / Tesla"
+              className="input"
+              autoComplete="off"
+            />
+          </div>
+
+          <div>
+            <label className="label">Тип актива</label>
+            <div className="grid grid-cols-4 gap-1.5">
+              {ASSET_TYPE_LIST.map(([key, info]) => (
+                <button
+                  type="button"
+                  key={key}
+                  onClick={() => setAssetType(key)}
+                  className={cn(
+                    "flex flex-col items-center gap-1 p-2 rounded-lg border text-xs",
+                    assetType === key
+                      ? "border-primary bg-primary/10"
+                      : "border-border bg-bg",
+                  )}
+                >
+                  <span className="text-lg">{info.emoji}</span>
+                  <span className="leading-tight text-center">{info.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="label">Валюта актива</label>
+            <select name="assetCurrency" defaultValue="RUB" className="input">
+              <option value="RUB">₽ RUB</option>
+              <option value="USD">$ USD</option>
+              <option value="EUR">€ EUR</option>
+            </select>
+          </div>
+        </>
+      )}
+
+      {isAssetBuy && isEdit && (
+        <p className="text-text-muted text-sm bg-bg border border-border rounded-lg px-3 py-2">
+          Поля актива (название, тип, текущая стоимость) меняются в разделе
+          «Активы». Здесь можно изменить сумму покупки, дату и счёт списания.
+        </p>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="label">
-            {effectiveType === "DEBT_RETURN" ? "Тело долга" : "Сумма"}
+            {effectiveType === "DEBT_RETURN"
+              ? "Тело долга"
+              : isAssetBuy
+              ? "Цена покупки"
+              : "Сумма"}
           </label>
           <input
             name="amount"
@@ -325,7 +406,11 @@ export function TransactionForm({
       {needsFromAccount && (
         <div>
           <label className="label">
-            {effectiveType === "TRANSFER" ? "Откуда" : "Счёт списания"}
+            {effectiveType === "TRANSFER"
+              ? "Откуда"
+              : isAssetBuy
+              ? "Счёт оплаты"
+              : "Счёт списания"}
           </label>
           <select
             name="fromAccountId"

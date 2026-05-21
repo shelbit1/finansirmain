@@ -58,7 +58,6 @@ export function BalanceDashboard() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     const { from, to } = periodToDates(DEFAULT_PERIOD);
     const granularity: Granularity = autoGranularity(DEFAULT_PERIOD);
     const url = `/api/balance/history?from=${from}&to=${to}&granularity=${granularity}`;

@@ -52,6 +52,17 @@ export const categorySchema = z.object({
   color: optionalString,
 });
 
+export const assetTypeSchema = z.enum([
+  "REAL_ESTATE",
+  "VEHICLE",
+  "STOCKS",
+  "CRYPTO",
+  "DEPOSIT",
+  "BUSINESS",
+  "PRECIOUS",
+  "OTHER",
+]);
+
 export const transactionTypeSchema = z.enum([
   "INCOME",
   "EXPENSE",
@@ -60,7 +71,14 @@ export const transactionTypeSchema = z.enum([
   "DEBT_RETURN",
   "DEBT_GIVE",
   "DEBT_RECEIVE",
+  "ASSET_BUY",
 ]);
+
+export const transactionAssetDataSchema = z.object({
+  name: z.string().trim().min(1, "Введите название актива").max(80),
+  type: assetTypeSchema,
+  currency: z.string().trim().min(3).max(8).default("RUB"),
+});
 
 export const transactionSchema = z
   .object({
@@ -81,6 +99,7 @@ export const transactionSchema = z
       .nullable()
       .transform((v) => (v && v.length > 0 ? v : null)),
     debtId: z.string().optional().nullable(),
+    assetData: transactionAssetDataSchema.optional().nullable(),
   })
   .superRefine((data, ctx) => {
     if (data.type === "INCOME") {
@@ -165,6 +184,16 @@ export const transactionSchema = z
         });
       }
     }
+    // Покупка актива: нужен счёт списания и описание актива (при создании)
+    if (data.type === "ASSET_BUY") {
+      if (!data.fromAccountId) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["fromAccountId"],
+          message: "Выберите счёт списания",
+        });
+      }
+    }
   });
 
 export const debtDirectionSchema = z.enum(["I_OWE", "OWED_TO_ME"]);
@@ -186,17 +215,6 @@ export const debtPaymentSchema = z.object({
   date: z.coerce.date(),
   note: optionalString,
 });
-
-export const assetTypeSchema = z.enum([
-  "REAL_ESTATE",
-  "VEHICLE",
-  "STOCKS",
-  "CRYPTO",
-  "DEPOSIT",
-  "BUSINESS",
-  "PRECIOUS",
-  "OTHER",
-]);
 
 export const assetSchema = z.object({
   name: z.string().trim().min(1, "Введите название").max(80),

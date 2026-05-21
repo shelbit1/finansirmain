@@ -154,6 +154,7 @@ enum TransactionType {
   DEBT_RETURN   // Я вернул долг — тело (−balance)
   DEBT_GIVE     // У меня взяли в долг (−balance)
   DEBT_RECEIVE  // Мне вернули долг (+balance)
+  ASSET_BUY     // Покупка актива со счёта (−balance, +asset)
 }
 
 model Transaction {
@@ -185,6 +186,10 @@ model Transaction {
   debtPaymentId String?
   debtPayment   DebtPayment? @relation(fields: [debtPaymentId], references: [id], onDelete: SetNull)
 
+  // Связь с разделом «Активы»: операция ASSET_BUY создаёт Asset
+  assetId String?
+  asset   Asset?  @relation(fields: [assetId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -194,6 +199,7 @@ model Transaction {
   @@index([type])
   @@index([parentId])
   @@index([debtId])
+  @@index([assetId])
 }
 
 // ─── ЕЖЕДНЕВНАЯ ПАМЯТКА ──────────────────────────────────────────────────────
@@ -314,6 +320,7 @@ model Asset {
 
   user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   valueHistory AssetValueHistory[]
+  transactions Transaction[]
 
   @@index([userId, type])
 }

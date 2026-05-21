@@ -8,8 +8,10 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ScrollableTabs } from "@/components/ui/ScrollableTabs";
 import { cn, formatDateShort, formatMoney } from "@/lib/utils";
 import { getTransactionTypeConfig, isDebtType } from "@/lib/transactionMeta";
+import { ASSET_TYPES } from "@/lib/assetTypes";
 import {
   TransactionForm,
+  TRANSACTION_MODAL_MAX_WIDTH,
   type AccountOption,
   type CategoryOption,
   type DebtOption,
@@ -23,13 +25,14 @@ export type TransactionWithRefs = TransactionDto & {
   toAccount: (AccountOption & { currency: string }) | null;
 };
 
-type Filter = "ALL" | "INCOME" | "EXPENSE" | "TRANSFER" | "DEBT";
+type Filter = "ALL" | "INCOME" | "EXPENSE" | "TRANSFER" | "DEBT" | "ASSET_BUY";
 
 const FILTER_TABS: { id: Filter; label: string }[] = [
   { id: "ALL", label: "Все" },
   { id: "INCOME", label: "Доходы" },
   { id: "EXPENSE", label: "Расходы" },
   { id: "DEBT", label: "Долги" },
+  { id: "ASSET_BUY", label: "Активы" },
   { id: "TRANSFER", label: "Перемещения" },
 ];
 
@@ -92,7 +95,12 @@ export function TransactionsList({
             </button>
           }
         />
-        <Modal open={creating} onClose={() => setCreating(false)} title="Новая операция">
+        <Modal
+          open={creating}
+          onClose={() => setCreating(false)}
+          title="Новая операция"
+          maxWidth={TRANSACTION_MODAL_MAX_WIDTH}
+        >
           <TransactionForm
             accounts={accounts}
             incomeCategories={incomeCategories}
@@ -129,20 +137,25 @@ export function TransactionsList({
           const Icon = conf.icon;
           const category = t.incomeCategory ?? t.expenseCategory;
           const isDebt = isDebtType(t.type);
+          const isAsset = t.type === "ASSET_BUY";
           const accountName = isDebt
             ? t.toAccount?.name ?? t.fromAccount?.name ?? ""
             : t.type === "INCOME"
             ? t.toAccount?.name
-            : t.type === "EXPENSE"
+            : t.type === "EXPENSE" || isAsset
             ? t.fromAccount?.name
             : `${t.fromAccount?.name ?? "?"} → ${t.toAccount?.name ?? "?"}`;
           const title = isDebt
             ? t.personName ?? conf.label
+            : isAsset
+            ? t.assetName ?? conf.label
             : category?.name ??
               (t.type === "TRANSFER" ? "Перемещение" : "Без категории");
-          const accountLabel = isDebt
-            ? [conf.label, accountName].filter(Boolean).join(" · ")
-            : accountName;
+          const accountLabel =
+            isDebt || isAsset
+              ? [conf.label, accountName].filter(Boolean).join(" · ")
+              : accountName;
+          const assetEmoji = isAsset && t.assetType ? ASSET_TYPES[t.assetType]?.emoji : null;
           const currency =
             t.toAccount?.currency ?? t.fromAccount?.currency ?? "RUB";
 
@@ -163,7 +176,9 @@ export function TransactionsList({
                     background: `color-mix(in srgb, ${conf.color} 14%, transparent)`,
                   }}
                 >
-                  {!isDebt && category?.icon ? (
+                  {isAsset && assetEmoji ? (
+                    <span className="text-lg">{assetEmoji}</span>
+                  ) : !isDebt && !isAsset && category?.icon ? (
                     <span className="text-lg">{category.icon}</span>
                   ) : (
                     <Icon className="w-5 h-5" style={{ color: conf.color }} />
@@ -204,7 +219,12 @@ export function TransactionsList({
         })}
       </div>
 
-      <Modal open={creating} onClose={() => setCreating(false)} title="Новая операция">
+      <Modal
+        open={creating}
+        onClose={() => setCreating(false)}
+        title="Новая операция"
+        maxWidth={TRANSACTION_MODAL_MAX_WIDTH}
+      >
         <TransactionForm
           accounts={accounts}
           incomeCategories={incomeCategories}
@@ -219,6 +239,7 @@ export function TransactionsList({
         open={Boolean(editing)}
         onClose={() => setEditing(null)}
         title="Редактирование операции"
+        maxWidth={TRANSACTION_MODAL_MAX_WIDTH}
       >
         {editing && (
           <TransactionForm
@@ -280,7 +301,12 @@ export function AddTransactionButton({
         <span className="hidden sm:inline">Добавить операцию</span>
         <span className="sm:hidden">Добавить</span>
       </button>
-      <Modal open={open} onClose={() => setOpen(false)} title="Новая операция">
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Новая операция"
+        maxWidth={TRANSACTION_MODAL_MAX_WIDTH}
+      >
         <TransactionForm
           accounts={accounts}
           incomeCategories={incomeCategories}

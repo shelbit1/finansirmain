@@ -78,6 +78,7 @@ export async function POST(req: Request) {
       interestAmount: data.interestAmount,
       personName: data.personName,
       debtId: data.debtId,
+      assetData: data.assetData,
     });
     return NextResponse.json({ transaction: tx }, { status: 201 });
   } catch (e) {
