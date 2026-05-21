@@ -14,13 +14,11 @@ import {
   CalendarCheck,
   CreditCard,
   Scale,
-  Settings,
   ChevronRight,
   Mail,
   Phone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { logoutAction } from "@/app/actions/auth";
 
 type IconComponent = ComponentType<{ className?: string }>;
 
@@ -63,7 +61,7 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-export function Sidebar({ userName, userEmail }: { userName: string; userEmail: string }) {
+export function Sidebar() {
   const pathname = usePathname();
   const reportsActive =
     isActive(pathname, "/reports") || isActive(pathname, "/balance");
@@ -74,13 +72,7 @@ export function Sidebar({ userName, userEmail }: { userName: string; userEmail: 
   }, [reportsActive]);
 
   return (
-    <aside className="hidden md:flex w-64 shrink-0 h-dvh flex-col border-r border-border bg-surface">
-      <div className="shrink-0 px-5 py-5 border-b border-border">
-        <Link href="/dashboard" className="font-display text-xl font-semibold tracking-tight">
-          Финансыр
-        </Link>
-      </div>
-
+    <aside className="hidden md:flex w-64 shrink-0 h-full flex-col border-r border-border bg-surface">
       <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-0.5">
         {NAV.map((entry) => {
           if (isGroup(entry)) {
@@ -147,54 +139,26 @@ export function Sidebar({ userName, userEmail }: { userName: string; userEmail: 
         })}
       </nav>
 
-      <div className="shrink-0 border-t border-border p-3">
-        <div className="flex items-center gap-2 px-2 py-2">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium truncate">{userName}</p>
-            <p className="text-xs text-text-muted truncate">{userEmail}</p>
-          </div>
-          <Link
-            href="/settings"
-            aria-label="Настройки"
-            className={cn(
-              "shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg",
-              isActive(pathname, "/settings")
-                ? "bg-primary/10 text-primary"
-                : "text-text-muted hover:bg-bg hover:text-text",
-            )}
-          >
-            <Settings className="w-4.5 h-4.5" />
-          </Link>
-        </div>
-
-        <div className="mx-2 my-2 pt-2 border-t border-border space-y-1">
-          <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">
-            Поддержка
-          </p>
+      <div className="shrink-0 border-t border-border p-4">
+        <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wide mb-2">
+          Поддержка
+        </p>
+        <div className="space-y-1">
           <a
             href="tel:+79152153048"
-            className="flex items-center gap-2 px-1 py-1 text-xs text-text-muted hover:text-text rounded"
+            className="flex items-center gap-2 py-1.5 text-xs text-text-muted hover:text-text rounded-lg"
           >
             <Phone className="w-3.5 h-3.5 shrink-0" />
             <span className="tnum">+7 915 215-30-48</span>
           </a>
           <a
             href="mailto:e23091997@yandex.com"
-            className="flex items-center gap-2 px-1 py-1 text-xs text-text-muted hover:text-text rounded"
+            className="flex items-center gap-2 py-1.5 text-xs text-text-muted hover:text-text rounded-lg"
           >
             <Mail className="w-3.5 h-3.5 shrink-0" />
             <span className="truncate">e23091997@yandex.com</span>
           </a>
         </div>
-
-        <form action={logoutAction}>
-          <button
-            type="submit"
-            className="w-full text-left px-3 py-2 text-sm text-text-muted hover:text-expense hover:bg-bg rounded-lg"
-          >
-            Выйти
-          </button>
-        </form>
       </div>
     </aside>
   );
