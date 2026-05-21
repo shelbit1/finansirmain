@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build && npm run copy:standalone",
-    "copy:standalone": "cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/",
+    "copy:standalone": "cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/ && mkdir -p .next/standalone/prisma && cp prisma/yandex-root.crt .next/standalone/prisma/",
     "start": "sh scripts/start.sh",
     "lint": "eslint",
     "db:generate": "dotenv -e .env.local -- prisma generate",
