@@ -7,6 +7,7 @@ import {
   TrendingUp,
   TrendingDown,
   HandCoins,
+  Coins,
 } from "lucide-react";
 import { cn, formatMoney } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -24,10 +25,14 @@ function fmt(value: number): string {
 export function ReportTable({ data }: { data: ReportData }) {
   const [openIncome, setOpenIncome] = useState(true);
   const [openExpense, setOpenExpense] = useState(true);
-  const [openDebt, setOpenDebt] = useState(true);
+  const [openAsset, setOpenAsset] = useState(false);
+  const [openDebt, setOpenDebt] = useState(false);
 
   const hasData =
-    data.income.total > 0 || data.expense.total > 0 || data.debt.total > 0;
+    data.income.total > 0 ||
+    data.expense.total > 0 ||
+    data.asset.total > 0 ||
+    data.debt.total > 0;
 
   if (!hasData) {
     return (
@@ -77,6 +82,35 @@ export function ReportTable({ data }: { data: ReportData }) {
             </tr>
 
             <SectionRows
+              label="Расходы"
+              icon="↑"
+              color="var(--color-expense)"
+              section={data.expense}
+              open={openExpense}
+              onToggle={() => setOpenExpense((v) => !v)}
+              periodCount={data.periods.length}
+            />
+
+            <tr aria-hidden>
+              <td colSpan={data.periods.length + 2} className="h-2" />
+            </tr>
+
+            <SectionRows
+              label="Активы"
+              icon={<Coins className="w-3.5 h-3.5" />}
+              color="var(--color-asset)"
+              section={data.asset}
+              open={openAsset}
+              onToggle={() => setOpenAsset((v) => !v)}
+              periodCount={data.periods.length}
+              note="Не влияет на сальдо"
+            />
+
+            <tr aria-hidden>
+              <td colSpan={data.periods.length + 2} className="h-2" />
+            </tr>
+
+            <SectionRows
               label="Долги"
               icon={<HandCoins className="w-3.5 h-3.5" />}
               color="var(--color-debt-owe)"
@@ -86,20 +120,6 @@ export function ReportTable({ data }: { data: ReportData }) {
               periodCount={data.periods.length}
               keepEmptyRows
               note="Не влияет на сальдо"
-            />
-
-            <tr aria-hidden>
-              <td colSpan={data.periods.length + 2} className="h-2" />
-            </tr>
-
-            <SectionRows
-              label="Расходы"
-              icon="↑"
-              color="var(--color-expense)"
-              section={data.expense}
-              open={openExpense}
-              onToggle={() => setOpenExpense((v) => !v)}
-              periodCount={data.periods.length}
             />
           </tbody>
           <tfoot className="border-t-2 border-border">

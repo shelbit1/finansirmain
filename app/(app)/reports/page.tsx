@@ -55,7 +55,7 @@ export default async function ReportsPage({
         granularity={granularity}
       />
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 mb-5">
         <SummaryTile
           label="Доходы"
           value={report.income.total}
@@ -65,6 +65,11 @@ export default async function ReportsPage({
           label="Расходы"
           value={report.expense.total}
           color="var(--color-expense)"
+        />
+        <SummaryTile
+          label="Активы"
+          value={report.asset.total}
+          color="var(--color-asset)"
         />
         <SummaryTile
           label="Долги (оборот)"

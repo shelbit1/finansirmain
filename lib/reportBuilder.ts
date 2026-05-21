@@ -2,7 +2,9 @@ import "server-only";
 import type { TransactionType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { decimalToNumber } from "@/lib/utils";
+import { ASSET_TYPES } from "@/lib/assetTypes";
 import { DEBT_LABELS, DEBT_TYPES, type DebtType } from "@/lib/transactionMeta";
+import type { AssetType } from "@prisma/client";
 
 export type ReportGranularity = "day" | "week" | "month";
 
@@ -35,6 +37,7 @@ export type ReportData = {
   periods: ReportPeriod[];
   income: ReportSection;
   expense: ReportSection;
+  asset: ReportSection;
   debt: ReportSection;
   saldoByPeriod: number[];
   saldoTotal: number;
@@ -138,7 +141,7 @@ export async function buildReport(
   const periods = buildPeriods(from, to, granularity);
   const empty = () => Array<number>(periods.length).fill(0);
 
-  const [incomeTx, expenseTx, debtTx, incomeCategories, expenseCategories] =
+  const [incomeTx, expenseTx, assetTx, debtTx, incomeCategories, expenseCategories] =
     await Promise.all([
       prisma.transaction.findMany({
         where: { userId, type: "INCOME", date: { gte: from, lte: endOfDay(to) } },
@@ -147,6 +150,18 @@ export async function buildReport(
       prisma.transaction.findMany({
         where: { userId, type: "EXPENSE", date: { gte: from, lte: endOfDay(to) } },
         select: { amount: true, date: true, expenseCategoryId: true },
+      }),
+      prisma.transaction.findMany({
+        where: {
+          userId,
+          type: "ASSET_BUY",
+          date: { gte: from, lte: endOfDay(to) },
+        },
+        select: {
+          amount: true,
+          date: true,
+          asset: { select: { type: true } },
+        },
       }),
       prisma.transaction.findMany({
         where: {
@@ -247,6 +262,51 @@ export async function buildReport(
     total: debtTotal,
   };
 
+  // Секция «Активы»: покупки ASSET_BUY по типу актива, не влияет на сальдо
+  const assetRowsMap = new Map<AssetType, ReportRow>();
+  for (const [type, meta] of Object.entries(ASSET_TYPES) as [
+    AssetType,
+    { label: string; emoji: string },
+  ][]) {
+    assetRowsMap.set(type, {
+      id: type,
+      name: meta.label,
+      icon: meta.emoji,
+      color: null,
+      byPeriod: empty(),
+      total: 0,
+    });
+  }
+  const assetOrphan: ReportRow = {
+    id: "__none__",
+    name: "Без типа",
+    icon: null,
+    color: null,
+    byPeriod: empty(),
+    total: 0,
+  };
+  const assetByPeriod = empty();
+  let assetTotal = 0;
+  for (const t of assetTx) {
+    const idx = bucketIndex(periods, t.date);
+    if (idx < 0) continue;
+    const amount = decimalToNumber(t.amount);
+    const type = t.asset?.type;
+    const row = type ? assetRowsMap.get(type) ?? assetOrphan : assetOrphan;
+    row.byPeriod[idx] += amount;
+    row.total += amount;
+    assetByPeriod[idx] += amount;
+    assetTotal += amount;
+  }
+  const assetRows = [...assetRowsMap.values()].filter((r) => r.total > 0);
+  assetRows.sort((a, b) => b.total - a.total);
+  if (assetOrphan.total > 0) assetRows.push(assetOrphan);
+  const asset: ReportSection = {
+    rows: assetRows,
+    byPeriod: assetByPeriod,
+    total: assetTotal,
+  };
+
   const saldoByPeriod = periods.map((_, i) => income.byPeriod[i] - expense.byPeriod[i]);
   const saldoTotal = income.total - expense.total;
 
@@ -257,6 +317,7 @@ export async function buildReport(
     periods,
     income,
     expense,
+    asset,
     debt,
     saldoByPeriod,
     saldoTotal,
