@@ -204,10 +204,7 @@ export const assetSchema = z.object({
   purchasePrice: amount,
   currentValue: z.coerce.number().nonnegative("Стоимость не может быть отрицательной"),
   currency: z.string().default("RUB"),
-  purchaseDate: z
-    .union([z.coerce.date(), z.literal("").transform(() => null)])
-    .optional()
-    .nullable(),
+  purchaseDate: z.coerce.date({ message: "Укажите дату покупки" }),
   quantity: z.coerce.number().positive().optional().nullable(),
   unit: optionalString,
   description: optionalString,

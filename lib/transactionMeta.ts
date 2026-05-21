@@ -1,4 +1,6 @@
 import type { TransactionType } from "@prisma/client";
+import { ArrowDown, ArrowLeftRight, ArrowUp, HandCoins } from "lucide-react";
+import type { ComponentType, CSSProperties } from "react";
 
 export const DEBT_TYPES = [
   "DEBT_TAKE",
@@ -37,4 +39,34 @@ export function debtColor(t: DebtType): string {
   return t === "DEBT_TAKE" || t === "DEBT_RETURN"
     ? "var(--color-debt-owe)"
     : "var(--color-debt-get)";
+}
+
+export type TransactionTypeConfig = {
+  icon: ComponentType<{ className?: string; style?: CSSProperties }>;
+  color: string;
+  sign: "+" | "−" | "";
+  label: string;
+};
+
+const BASE_CONFIG: Record<"INCOME" | "EXPENSE" | "TRANSFER", TransactionTypeConfig> = {
+  INCOME: { icon: ArrowDown, color: "var(--color-income)", sign: "+", label: "Доход" },
+  EXPENSE: { icon: ArrowUp, color: "var(--color-expense)", sign: "−", label: "Расход" },
+  TRANSFER: {
+    icon: ArrowLeftRight,
+    color: "var(--color-transfer)",
+    sign: "",
+    label: "Перемещение",
+  },
+};
+
+export function getTransactionTypeConfig(t: TransactionType): TransactionTypeConfig {
+  if (isDebtType(t)) {
+    return {
+      icon: HandCoins,
+      color: debtColor(t),
+      sign: debtSign(t),
+      label: DEBT_LABELS[t],
+    };
+  }
+  return BASE_CONFIG[t as "INCOME" | "EXPENSE" | "TRANSFER"];
 }

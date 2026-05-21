@@ -8,7 +8,7 @@ import { ReportFilters } from "@/components/app/reports/ReportFilters";
 import { ReportTable } from "@/components/app/reports/ReportTable";
 import { formatMoney, toInputDate } from "@/lib/utils";
 
-export const metadata = { title: "Отчёты — Финансыр" };
+export const metadata = { title: "Доходы и расходы — Финансыр" };
 
 function parseGranularity(v: string | undefined): ReportGranularity {
   return v === "day" || v === "week" || v === "month" ? v : "month";
@@ -45,8 +45,8 @@ export default async function ReportsPage({
   return (
     <>
       <PageHeader
-        title="Отчёты"
-        subtitle="Доходы и расходы по статьям с разбивкой по периодам"
+        title="Доходы и расходы"
+        subtitle="По статьям с разбивкой по периодам"
       />
 
       <ReportFilters

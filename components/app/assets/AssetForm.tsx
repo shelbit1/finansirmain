@@ -36,7 +36,6 @@ export function AssetForm({
     setPending(true);
 
     const fd = new FormData(e.currentTarget);
-    const purchaseRaw = String(fd.get("purchaseDate") ?? "");
     const qty = String(fd.get("quantity") ?? "");
     const payload = {
       type,
@@ -44,7 +43,7 @@ export function AssetForm({
       purchasePrice: Number(fd.get("purchasePrice") ?? 0),
       currentValue: Number(fd.get("currentValue") ?? 0),
       currency: String(fd.get("currency") ?? "RUB"),
-      purchaseDate: purchaseRaw || null,
+      purchaseDate: String(fd.get("purchaseDate") ?? ""),
       quantity: qty ? Number(qty) : null,
       unit: String(fd.get("unit") ?? "") || undefined,
       description: String(fd.get("description") ?? "") || undefined,
@@ -151,6 +150,7 @@ export function AssetForm({
           <input
             name="purchaseDate"
             type="date"
+            required
             defaultValue={asset?.purchaseDate ? toInputDate(asset.purchaseDate) : ""}
             className="input"
           />

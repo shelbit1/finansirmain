@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState, type ComponentType } from "react";
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -12,26 +13,65 @@ import {
   BarChart3,
   CalendarCheck,
   CreditCard,
+  Scale,
   Settings,
+  ChevronRight,
+  Mail,
+  Phone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/app/actions/auth";
 
-const NAV = [
+type IconComponent = ComponentType<{ className?: string }>;
+
+type NavItem = { href: string; label: string; icon: IconComponent };
+
+type NavGroup = {
+  id: string;
+  label: string;
+  icon: IconComponent;
+  children: NavItem[];
+};
+
+type NavEntry = NavItem | NavGroup;
+
+function isGroup(entry: NavEntry): entry is NavGroup {
+  return "children" in entry;
+}
+
+const NAV: NavEntry[] = [
   { href: "/dashboard", label: "Дашборд", icon: LayoutDashboard },
   { href: "/transactions", label: "Операции", icon: ArrowLeftRight },
-  { href: "/plans", label: "Планы", icon: CalendarCheck },
-  { href: "/reports", label: "Отчёты", icon: BarChart3 },
-  { href: "/accounts", label: "Счета", icon: Wallet },
-  { href: "/categories", label: "Категории", icon: Tag },
-  { href: "/debts", label: "Долги", icon: HandCoins },
+  {
+    id: "reports",
+    label: "Отчёты",
+    icon: BarChart3,
+    children: [
+      { href: "/reports", label: "Доходы − Расходы", icon: ArrowLeftRight },
+      { href: "/balance", label: "Баланс", icon: Scale },
+    ],
+  },
   { href: "/assets", label: "Активы", icon: Coins },
+  { href: "/accounts", label: "Счета", icon: Wallet },
+  { href: "/debts", label: "Долги", icon: HandCoins },
+  { href: "/plans", label: "Планы", icon: CalendarCheck },
   { href: "/billing", label: "Подписка", icon: CreditCard },
-  { href: "/settings", label: "Настройки", icon: Settings },
+  { href: "/categories", label: "Категории", icon: Tag },
 ];
+
+function isActive(pathname: string, href: string): boolean {
+  return pathname === href || pathname.startsWith(href + "/");
+}
 
 export function Sidebar({ userName, userEmail }: { userName: string; userEmail: string }) {
   const pathname = usePathname();
+  const reportsActive =
+    isActive(pathname, "/reports") || isActive(pathname, "/balance");
+  const [reportsOpen, setReportsOpen] = useState(reportsActive);
+
+  useEffect(() => {
+    if (reportsActive) setReportsOpen(true);
+  }, [reportsActive]);
 
   return (
     <aside className="hidden md:flex w-64 shrink-0 h-dvh flex-col border-r border-border bg-surface">
@@ -42,31 +82,111 @@ export function Sidebar({ userName, userEmail }: { userName: string; userEmail: 
       </div>
 
       <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-0.5">
-        {NAV.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(item.href + "/");
+        {NAV.map((entry) => {
+          if (isGroup(entry)) {
+            const groupActive = entry.children.some((c) => isActive(pathname, c.href));
+            return (
+              <div key={entry.id}>
+                <button
+                  type="button"
+                  onClick={() => setReportsOpen((v) => !v)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium",
+                    groupActive ? "text-text" : "text-text",
+                    "hover:bg-bg",
+                  )}
+                >
+                  <entry.icon className="w-4.5 h-4.5 shrink-0" />
+                  <span className="flex-1 text-left">{entry.label}</span>
+                  <ChevronRight
+                    className={cn(
+                      "w-3.5 h-3.5 shrink-0 transition-transform",
+                      reportsOpen && "rotate-90",
+                    )}
+                  />
+                </button>
+                {reportsOpen && (
+                  <div className="mt-0.5 pl-7 space-y-0.5">
+                    {entry.children.map((child) => {
+                      const active = isActive(pathname, child.href);
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className={cn(
+                            "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium",
+                            active
+                              ? "bg-primary/10 text-primary"
+                              : "text-text-muted hover:bg-bg hover:text-text",
+                          )}
+                        >
+                          <child.icon className="w-4 h-4 shrink-0" />
+                          {child.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+          const active = isActive(pathname, entry.href);
           return (
             <Link
-              key={item.href}
-              href={item.href}
+              key={entry.href}
+              href={entry.href}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium",
-                active
-                  ? "bg-primary/10 text-primary"
-                  : "text-text hover:bg-bg",
+                active ? "bg-primary/10 text-primary" : "text-text hover:bg-bg",
               )}
             >
-              <item.icon className="w-4.5 h-4.5 shrink-0" />
-              {item.label}
+              <entry.icon className="w-4.5 h-4.5 shrink-0" />
+              {entry.label}
             </Link>
           );
         })}
       </nav>
 
       <div className="shrink-0 border-t border-border p-3">
-        <div className="px-2 py-2">
-          <p className="text-sm font-medium truncate">{userName}</p>
-          <p className="text-xs text-text-muted truncate">{userEmail}</p>
+        <div className="flex items-center gap-2 px-2 py-2">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium truncate">{userName}</p>
+            <p className="text-xs text-text-muted truncate">{userEmail}</p>
+          </div>
+          <Link
+            href="/settings"
+            aria-label="Настройки"
+            className={cn(
+              "shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg",
+              isActive(pathname, "/settings")
+                ? "bg-primary/10 text-primary"
+                : "text-text-muted hover:bg-bg hover:text-text",
+            )}
+          >
+            <Settings className="w-4.5 h-4.5" />
+          </Link>
         </div>
+
+        <div className="mx-2 my-2 pt-2 border-t border-border space-y-1">
+          <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">
+            Поддержка
+          </p>
+          <a
+            href="tel:+79152153048"
+            className="flex items-center gap-2 px-1 py-1 text-xs text-text-muted hover:text-text rounded"
+          >
+            <Phone className="w-3.5 h-3.5 shrink-0" />
+            <span className="tnum">+7 915 215-30-48</span>
+          </a>
+          <a
+            href="mailto:e23091997@yandex.com"
+            className="flex items-center gap-2 px-1 py-1 text-xs text-text-muted hover:text-text rounded"
+          >
+            <Mail className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">e23091997@yandex.com</span>
+          </a>
+        </div>
+
         <form action={logoutAction}>
           <button
             type="submit"

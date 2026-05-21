@@ -48,6 +48,9 @@ export function ReportTable({ data }: { data: ReportData }) {
               <th className="sticky left-0 z-10 bg-bg/60 text-left font-semibold px-4 py-3 min-w-[200px]">
                 По статьям
               </th>
+              <th className="text-right font-semibold px-4 py-3 whitespace-nowrap bg-bg/80 min-w-[120px]">
+                Итого
+              </th>
               {data.periods.map((p) => (
                 <th
                   key={p.key}
@@ -56,9 +59,6 @@ export function ReportTable({ data }: { data: ReportData }) {
                   {p.label}
                 </th>
               ))}
-              <th className="text-right font-semibold px-4 py-3 whitespace-nowrap bg-bg/80 sticky right-0 z-10 min-w-[120px]">
-                Итого
-              </th>
             </tr>
           </thead>
           <tbody>
@@ -114,6 +114,15 @@ export function ReportTable({ data }: { data: ReportData }) {
                   Сальдо
                 </span>
               </td>
+              <td
+                className="px-4 py-3 text-right font-display font-bold text-base tnum whitespace-nowrap bg-bg/80"
+                style={{
+                  color:
+                    data.saldoTotal >= 0 ? "var(--color-income)" : "var(--color-expense)",
+                }}
+              >
+                {fmt(data.saldoTotal)}
+              </td>
               {data.saldoByPeriod.map((v, i) => (
                 <td
                   key={i}
@@ -123,15 +132,6 @@ export function ReportTable({ data }: { data: ReportData }) {
                   {fmt(v)}
                 </td>
               ))}
-              <td
-                className="px-4 py-3 text-right font-display font-bold text-base tnum whitespace-nowrap bg-bg/80 sticky right-0 z-10"
-                style={{
-                  color:
-                    data.saldoTotal >= 0 ? "var(--color-income)" : "var(--color-expense)",
-                }}
-              >
-                {fmt(data.saldoTotal)}
-              </td>
             </tr>
           </tfoot>
         </table>
@@ -193,6 +193,12 @@ function SectionRows({
             )}
           </span>
         </td>
+        <td
+          className="px-4 py-2.5 text-right font-semibold tnum whitespace-nowrap bg-bg/40"
+          style={{ color }}
+        >
+          {fmt(section.total)}
+        </td>
         {section.byPeriod.map((v, i) => (
           <td
             key={i}
@@ -202,12 +208,6 @@ function SectionRows({
             {fmt(v)}
           </td>
         ))}
-        <td
-          className="px-4 py-2.5 text-right font-semibold tnum whitespace-nowrap bg-bg/40 sticky right-0 z-10"
-          style={{ color }}
-        >
-          {fmt(section.total)}
-        </td>
       </tr>
 
       {open &&
@@ -238,14 +238,14 @@ function CategoryRow({ row, periodCount }: { row: ReportRow; periodCount: number
           <span className="truncate">{row.name}</span>
         </span>
       </td>
+      <td className="px-4 py-2 text-right font-medium tnum whitespace-nowrap bg-bg/40">
+        {fmt(row.total)}
+      </td>
       {row.byPeriod.map((v, i) => (
         <td key={i} className="px-3 py-2 text-right tnum whitespace-nowrap text-text-muted">
           {fmt(v)}
         </td>
       ))}
-      <td className="px-4 py-2 text-right font-medium tnum whitespace-nowrap bg-bg/40 sticky right-0 z-10">
-        {fmt(row.total)}
-      </td>
       {/* periodCount used to keep types stable */}
       <td hidden aria-hidden>{periodCount}</td>
     </tr>

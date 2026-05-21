@@ -9,6 +9,7 @@ import {
   BarChart3,
   HandCoins,
   Coins,
+  Scale,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +17,8 @@ const TABS = [
   { href: "/dashboard", label: "Главная", icon: LayoutDashboard },
   { href: "/transactions", label: "Операции", icon: ArrowLeftRight },
   { href: "/plans", label: "Планы", icon: CalendarCheck },
-  { href: "/reports", label: "Отчёты", icon: BarChart3 },
+  { href: "/reports", label: "Дох. − Расх.", icon: BarChart3 },
+  { href: "/balance", label: "Баланс", icon: Scale },
   { href: "/debts", label: "Долги", icon: HandCoins },
   { href: "/assets", label: "Активы", icon: Coins },
 ];
@@ -26,7 +28,7 @@ export function BottomBar() {
 
   return (
     <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-surface border-t border-border safe-area">
-      <ul className="grid grid-cols-6">
+      <ul className="grid grid-cols-7">
         {TABS.map((tab) => {
           const active = pathname === tab.href || pathname.startsWith(tab.href + "/");
           return (

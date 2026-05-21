@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   ArrowDown,
-  ArrowLeftRight,
   ArrowUp,
   Coins,
   HandCoins,
@@ -19,6 +18,10 @@ import {
   percentChange,
   startOfMonth,
 } from "@/lib/utils";
+import {
+  getTransactionTypeConfig,
+  isDebtType,
+} from "@/lib/transactionMeta";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { AddTransactionButton } from "@/components/app/transactions/TransactionsList";
 import type { DebtOption } from "@/components/app/transactions/TransactionForm";
@@ -60,6 +63,7 @@ export default async function DashboardPage() {
         expenseCategory: { select: { name: true, icon: true } },
         fromAccount: { select: { name: true, currency: true } },
         toAccount: { select: { name: true, currency: true } },
+        debt: { select: { personName: true } },
       },
     }),
     prisma.debt.findMany({
@@ -270,33 +274,33 @@ export default async function DashboardPage() {
           ) : (
             <div className="divide-y divide-border">
               {recent.map((t) => {
-                const conf =
-                  t.type === "INCOME"
-                    ? { icon: ArrowDown, color: "var(--color-income)", sign: "+" }
-                    : t.type === "EXPENSE"
-                    ? { icon: ArrowUp, color: "var(--color-expense)", sign: "−" }
-                    : { icon: ArrowLeftRight, color: "var(--color-transfer)", sign: "" };
+                const conf = getTransactionTypeConfig(t.type);
                 const Icon = conf.icon;
                 const cat = t.incomeCategory ?? t.expenseCategory;
-                const currency = t.toAccount?.currency ?? t.fromAccount?.currency ?? "RUB";
+                const isDebt = isDebtType(t.type);
+                const title = isDebt
+                  ? t.debt?.personName ?? conf.label
+                  : cat?.name ??
+                    (t.type === "TRANSFER" ? "Перемещение" : "—");
+                const currency =
+                  t.toAccount?.currency ?? t.fromAccount?.currency ?? "RUB";
                 return (
                   <div key={t.id} className="flex items-center gap-3 p-4">
                     <div
                       className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
                       style={{ background: `color-mix(in srgb, ${conf.color} 14%, transparent)` }}
                     >
-                      {cat?.icon ? (
+                      {!isDebt && cat?.icon ? (
                         <span className="text-lg">{cat.icon}</span>
                       ) : (
                         <Icon className="w-4 h-4" style={{ color: conf.color }} />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">
-                        {cat?.name ?? (t.type === "TRANSFER" ? "Перемещение" : "—")}
-                      </p>
+                      <p className="font-medium text-sm truncate">{title}</p>
                       <p className="text-xs text-text-muted truncate">
                         {formatDateShort(t.date)}
+                        {isDebt ? ` · ${conf.label}` : ""}
                         {t.note ? ` · ${t.note}` : ""}
                       </p>
                     </div>

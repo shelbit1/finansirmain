@@ -2,27 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Trash2,
-  Plus,
-  ArrowDown,
-  ArrowUp,
-  ArrowLeftRight,
-  HandCoins,
-  Inbox,
-} from "lucide-react";
-import type { TransactionType } from "@prisma/client";
+import { Trash2, Plus, Inbox } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ScrollableTabs } from "@/components/ui/ScrollableTabs";
 import { cn, formatDateShort, formatMoney } from "@/lib/utils";
-import {
-  DEBT_LABELS,
-  debtColor,
-  debtSign,
-  isDebtType,
-  type DebtType,
-} from "@/lib/transactionMeta";
+import { getTransactionTypeConfig, isDebtType } from "@/lib/transactionMeta";
 import {
   TransactionForm,
   type AccountOption,
@@ -37,36 +22,6 @@ export type TransactionWithRefs = TransactionDto & {
   fromAccount: (AccountOption & { currency: string }) | null;
   toAccount: (AccountOption & { currency: string }) | null;
 };
-
-type TypeConfig = {
-  icon: typeof ArrowDown;
-  color: string;
-  sign: "+" | "−" | "";
-  label: string;
-};
-
-const BASE_CONFIG: Record<"INCOME" | "EXPENSE" | "TRANSFER", TypeConfig> = {
-  INCOME: { icon: ArrowDown, color: "var(--color-income)", sign: "+", label: "Доход" },
-  EXPENSE: { icon: ArrowUp, color: "var(--color-expense)", sign: "−", label: "Расход" },
-  TRANSFER: {
-    icon: ArrowLeftRight,
-    color: "var(--color-transfer)",
-    sign: "",
-    label: "Перемещение",
-  },
-};
-
-function getTypeConfig(t: TransactionType): TypeConfig {
-  if (isDebtType(t)) {
-    return {
-      icon: HandCoins,
-      color: debtColor(t as DebtType),
-      sign: debtSign(t as DebtType),
-      label: DEBT_LABELS[t as DebtType],
-    };
-  }
-  return BASE_CONFIG[t as "INCOME" | "EXPENSE" | "TRANSFER"];
-}
 
 type Filter = "ALL" | "INCOME" | "EXPENSE" | "TRANSFER" | "DEBT";
 
@@ -170,7 +125,7 @@ export function TransactionsList({
 
       <div className="card divide-y divide-border">
         {filtered.map((t) => {
-          const conf = getTypeConfig(t.type);
+          const conf = getTransactionTypeConfig(t.type);
           const Icon = conf.icon;
           const category = t.incomeCategory ?? t.expenseCategory;
           const isDebt = isDebtType(t.type);
