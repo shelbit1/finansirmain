@@ -16,17 +16,16 @@ function findSslCertPath(): string | null {
 }
 
 /**
- * Нормализует DATABASE_URL для production (Amvera standalone).
- * Относительный sslrootcert из .env.local не работает, если cwd — .next/standalone.
+ * Возвращает DATABASE_URL для production (Amvera standalone).
+ * Относительный sslrootcert из .env.local не работает, если cwd — .next/standalone,
+ * поэтому подменяем его на абсолютный путь к prisma/yandex-root.crt.
+ *
+ * Возвращает undefined, если переменная не задана — Prisma даст внятную ошибку
+ * только при первом запросе (важно, т.к. на этапе сборки на Amvera env недоступны).
  */
-export function resolveDatabaseUrl(): string {
+export function resolveDatabaseUrl(): string | undefined {
   const raw = process.env.DATABASE_URL?.trim();
-  if (!raw) {
-    throw new Error(
-      "DATABASE_URL не задан. В Amvera: проект finansyr → Переменные → добавьте DATABASE_URL и перезапустите контейнер.",
-    );
-  }
-
+  if (!raw) return undefined;
   if (!raw.includes("sslrootcert=")) return raw;
 
   const cert = findSslCertPath();

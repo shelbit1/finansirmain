@@ -3,16 +3,28 @@ import { resolveDatabaseUrl } from "@/lib/databaseUrl";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-function createPrismaClient() {
+function createPrismaClient(): PrismaClient {
   const url = resolveDatabaseUrl();
   return new PrismaClient({
-    datasources: { db: { url } },
+    ...(url ? { datasources: { db: { url } } } : {}),
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   });
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+function getPrismaClient(): PrismaClient {
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = createPrismaClient();
+  }
+  return globalForPrisma.prisma;
 }
+
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    const client = getPrismaClient() as unknown as Record<
+      string | symbol,
+      unknown
+    >;
+    const value = client[prop as string];
+    return typeof value === "function" ? value.bind(client) : value;
+  },
+});
