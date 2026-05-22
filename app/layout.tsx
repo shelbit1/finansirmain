@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { CookieBanner } from "@/components/landing/CookieBanner";
@@ -20,6 +20,13 @@ export const metadata: Metadata = {
   title: "Финансыр — личный учёт финансов",
   description:
     "Современная платформа для личного учёта финансов: счета, операции, долги и активы в одном месте.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#3d7eff",
 };
 
 export default function RootLayout({

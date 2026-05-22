@@ -28,6 +28,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { AddTransactionButton } from "@/components/app/transactions/TransactionsList";
 import type { DebtOption } from "@/components/app/transactions/TransactionForm";
 import { DailyChart } from "@/components/app/dashboard/DailyChart";
+import { HealthScoreWidget } from "@/components/app/dashboard/HealthScoreWidget";
 
 export const metadata = { title: "Дашборд — Финансыр" };
 
@@ -194,9 +195,12 @@ export default async function DashboardPage() {
             {formatMoney(totalBalance, "RUB")}
           </p>
           <p className="text-xs text-text-muted mt-1">
-            По {accounts.length} счёт{accounts.length === 1 ? "у" : accounts.length < 5 ? "ам" : "ам"}
+            По {accounts.length} счёт
+            {accounts.length === 1 ? "у" : accounts.length < 5 ? "ам" : "ам"}
           </p>
         </div>
+
+        <HealthScoreWidget />
 
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <Tile
@@ -214,7 +218,9 @@ export default async function DashboardPage() {
           <Tile
             label="Чистый результат"
             value={formatMoney(monthNet, "RUB")}
-            color={monthNet >= 0 ? "var(--color-income)" : "var(--color-expense)"}
+            color={
+              monthNet >= 0 ? "var(--color-income)" : "var(--color-expense)"
+            }
             icon={monthNet >= 0 ? TrendingUp : TrendingDown}
           />
         </div>

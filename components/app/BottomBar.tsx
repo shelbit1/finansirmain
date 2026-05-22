@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -11,6 +12,9 @@ import {
   Coins,
   Scale,
   Lock,
+  MoreHorizontal,
+  Wallet,
+  Tag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AccessTier } from "@/lib/access";
@@ -25,43 +29,134 @@ type Tab = {
 const TABS: Tab[] = [
   { href: "/dashboard", label: "Главная", icon: LayoutDashboard },
   { href: "/transactions", label: "Операции", icon: ArrowLeftRight },
+  { href: "/reports", label: "Отчёт", icon: BarChart3 },
   { href: "/plans", label: "Планы", icon: CalendarCheck, paid: true },
-  { href: "/reports", label: "Дох. − Расх.", icon: BarChart3 },
   { href: "/balance", label: "Баланс", icon: Scale, paid: true },
   { href: "/debts", label: "Долги", icon: HandCoins, paid: true },
   { href: "/assets", label: "Активы", icon: Coins, paid: true },
+  { href: "/accounts", label: "Счета", icon: Wallet },
+  { href: "/categories", label: "Категории", icon: Tag },
 ];
+
+const VISIBLE_COUNT = 4;
 
 export function BottomBar({ tier }: { tier: AccessTier }) {
   const pathname = usePathname();
   const isFree = tier === "FREE";
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLLIElement>(null);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onClick);
+    return () => document.removeEventListener("pointerdown", onClick);
+  }, [moreOpen]);
+
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [pathname]);
+
+  const needsOverflow = TABS.length > VISIBLE_COUNT + 1;
+  const visible = needsOverflow ? TABS.slice(0, VISIBLE_COUNT) : TABS;
+  const overflow = needsOverflow ? TABS.slice(VISIBLE_COUNT) : [];
+  const overflowActive = overflow.some(
+    (t) => pathname === t.href || pathname.startsWith(t.href + "/"),
+  );
+
+  const renderTab = (tab: Tab) => {
+    const active =
+      pathname === tab.href || pathname.startsWith(tab.href + "/");
+    const locked = isFree && tab.paid;
+    const href = locked ? "/billing" : tab.href;
+    return (
+      <Link
+        href={href}
+        title={locked ? "Доступно в платной подписке" : undefined}
+        className={cn(
+          "relative flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[56px] text-[10px] font-medium leading-tight",
+          active ? "text-primary" : "text-text-muted",
+        )}
+      >
+        <tab.icon className="w-5 h-5 shrink-0" />
+        <span className="truncate max-w-full px-1">{tab.label}</span>
+        {locked && (
+          <Lock className="absolute top-1 right-2 w-2.5 h-2.5 opacity-50" />
+        )}
+      </Link>
+    );
+  };
+
+  const columns = visible.length + (needsOverflow ? 1 : 0);
 
   return (
     <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-surface border-t border-border safe-area">
-      <ul className="grid grid-cols-7">
-        {TABS.map((tab) => {
-          const active = pathname === tab.href || pathname.startsWith(tab.href + "/");
-          const locked = isFree && tab.paid;
-          const href = locked ? "/billing" : tab.href;
-          return (
-            <li key={tab.href}>
-              <Link
-                href={href}
-                title={locked ? "Доступно в платной подписке" : undefined}
-                className={cn(
-                  "relative flex flex-col items-center justify-center gap-1 py-2 min-h-[56px] text-[10px] font-medium leading-tight",
-                  active ? "text-primary" : "text-text-muted",
-                )}
+      <ul
+        className="grid"
+        style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+      >
+        {visible.map((tab) => (
+          <li key={tab.href}>{renderTab(tab)}</li>
+        ))}
+        {needsOverflow && (
+          <li className="relative" ref={moreRef}>
+            <button
+              type="button"
+              onClick={() => setMoreOpen((v) => !v)}
+              className={cn(
+                "w-full flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[56px] text-[10px] font-medium leading-tight",
+                overflowActive || moreOpen
+                  ? "text-primary"
+                  : "text-text-muted",
+              )}
+              aria-expanded={moreOpen}
+              aria-haspopup="menu"
+            >
+              <MoreHorizontal className="w-5 h-5 shrink-0" />
+              <span>Ещё</span>
+            </button>
+
+            {moreOpen && (
+              <div
+                role="menu"
+                className="absolute right-2 bottom-full mb-2 w-52 card shadow-lg border border-border py-1"
               >
-                <tab.icon className="w-5 h-5 shrink-0" />
-                <span className="truncate max-w-full px-1">{tab.label}</span>
-                {locked && (
-                  <Lock className="absolute top-1 right-1 w-2.5 h-2.5 opacity-50" />
-                )}
-              </Link>
-            </li>
-          );
-        })}
+                {overflow.map((tab) => {
+                  const active =
+                    pathname === tab.href ||
+                    pathname.startsWith(tab.href + "/");
+                  const locked = isFree && tab.paid;
+                  const href = locked ? "/billing" : tab.href;
+                  return (
+                    <Link
+                      key={tab.href}
+                      href={href}
+                      title={
+                        locked ? "Доступно в платной подписке" : undefined
+                      }
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 text-sm",
+                        active
+                          ? "text-primary bg-primary/5"
+                          : "text-text hover:bg-bg",
+                      )}
+                    >
+                      <tab.icon className="w-4 h-4 shrink-0" />
+                      <span className="flex-1">{tab.label}</span>
+                      {locked && (
+                        <Lock className="w-3.5 h-3.5 text-text-muted opacity-70" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </li>
+        )}
       </ul>
     </nav>
   );

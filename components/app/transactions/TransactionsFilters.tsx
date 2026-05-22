@@ -79,32 +79,32 @@ export function TransactionsFilters({
         ))}
       </ScrollableTabs>
 
-      <div className="grid grid-cols-2 sm:grid-cols-[1fr_auto_auto_auto] gap-2">
-        <div className="relative col-span-2 sm:col-span-1">
-          <Search
-            className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
-            aria-hidden
-          />
-          <input
-            type="text"
-            value={value.search}
-            onChange={(e) => set("search", e.target.value)}
-            placeholder="Поиск по операциям"
-            aria-label="Поиск по операциям"
-            className="input pl-9 h-10 text-sm"
-          />
-          {value.search && (
-            <button
-              type="button"
-              onClick={() => set("search", "")}
-              aria-label="Очистить поиск"
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 text-text-muted hover:text-text rounded"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
+      <div className="relative">
+        <Search
+          className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
+          aria-hidden
+        />
+        <input
+          type="text"
+          value={value.search}
+          onChange={(e) => set("search", e.target.value)}
+          placeholder="Поиск по операциям"
+          aria-label="Поиск по операциям"
+          className="input pl-9 h-10 text-sm"
+        />
+        {value.search && (
+          <button
+            type="button"
+            onClick={() => set("search", "")}
+            aria-label="Очистить поиск"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 text-text-muted hover:text-text rounded"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
 
+      <div className="grid grid-cols-2 sm:grid-cols-[auto_auto_1fr] gap-2">
         <input
           type="number"
           inputMode="decimal"
@@ -112,7 +112,7 @@ export function TransactionsFilters({
           onChange={(e) => set("amountMin", e.target.value)}
           placeholder="Сумма от"
           aria-label="Минимальная сумма"
-          className="input h-10 text-sm w-full sm:w-32"
+          className="input h-10 text-sm w-full sm:w-36 min-w-0"
         />
         <input
           type="number"
@@ -121,10 +121,10 @@ export function TransactionsFilters({
           onChange={(e) => set("amountMax", e.target.value)}
           placeholder="Сумма до"
           aria-label="Максимальная сумма"
-          className="input h-10 text-sm w-full sm:w-32"
+          className="input h-10 text-sm w-full sm:w-36 min-w-0"
         />
 
-        <div className="relative col-span-2 sm:col-span-1">
+        <div className="relative col-span-2 sm:col-span-1 sm:justify-self-end">
           <Calendar
             className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
             aria-hidden

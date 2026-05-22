@@ -47,17 +47,27 @@ function amountSign(type: TransactionType): "+" | "−" | "" {
   return "";
 }
 
-function ArrowIcon({ type }: { type: TransactionType }) {
+function ArrowIcon({
+  type,
+  className,
+}: {
+  type: TransactionType;
+  className?: string;
+}) {
   const Icon =
     flow(type) === "in"
       ? ArrowDownLeft
       : flow(type) === "out"
         ? ArrowUpRight
         : ArrowLeftRight;
-  return <Icon className="w-4 h-4" style={{ color: arrowColor(type) }} />;
+  return (
+    <Icon
+      className={cn("w-4 h-4", className)}
+      style={{ color: arrowColor(type) }}
+    />
+  );
 }
 
-/** Группа операций по календарной дате. */
 type Group = {
   key: string;
   label: string;
@@ -95,7 +105,6 @@ function groupByDate(items: TransactionWithRefs[]): Group[] {
     });
 }
 
-/** Текст в колонке «Счёт» / «Контрагент». */
 function rowMeta(t: TransactionWithRefs): {
   accountText: string;
   titleText: string;
@@ -107,7 +116,11 @@ function rowMeta(t: TransactionWithRefs): {
   let accountText = "";
   if (t.type === "TRANSFER") {
     accountText = `${t.fromAccount?.name ?? "?"} → ${t.toAccount?.name ?? "?"}`;
-  } else if (t.type === "INCOME" || t.type === "DEBT_TAKE" || t.type === "DEBT_RECEIVE") {
+  } else if (
+    t.type === "INCOME" ||
+    t.type === "DEBT_TAKE" ||
+    t.type === "DEBT_RECEIVE"
+  ) {
     accountText = t.toAccount?.name ?? "—";
   } else {
     accountText = t.fromAccount?.name ?? "—";
@@ -148,6 +161,7 @@ export function TransactionsTable({
 
   return (
     <div className="card overflow-hidden">
+      {/* Заголовок таблицы — только на десктопе */}
       <div className="hidden md:grid grid-cols-[120px_minmax(0,1.2fr)_60px_minmax(0,1.4fr)_minmax(0,1fr)_140px_40px] gap-3 px-4 py-2.5 border-b border-border text-xs font-medium text-text-muted uppercase tracking-wide">
         <span>Дата</span>
         <span>Счёт</span>
@@ -160,7 +174,7 @@ export function TransactionsTable({
 
       {groups.map((g) => (
         <div key={g.key}>
-          <div className="bg-bg/60 px-4 py-1.5 text-xs font-semibold text-text-muted">
+          <div className="bg-bg/60 px-3 sm:px-4 py-1.5 text-xs font-semibold text-text-muted">
             {g.label}
           </div>
           {g.items.map((t) => {
@@ -169,100 +183,170 @@ export function TransactionsTable({
               t.toAccount?.currency ?? t.fromAccount?.currency ?? "RUB";
             const sign = amountSign(t.type);
             const color = amountColor(t.type);
+            const isOpen = openMenu === t.id;
 
             return (
               <div
                 key={t.id}
-                className="group grid grid-cols-[80px_minmax(0,1fr)_36px_minmax(0,1fr)_140px_40px] md:grid-cols-[120px_minmax(0,1.2fr)_60px_minmax(0,1.4fr)_minmax(0,1fr)_140px_40px] items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 hover:bg-bg/50 cursor-pointer"
+                className="group border-b border-border last:border-b-0 hover:bg-bg/50 cursor-pointer"
                 onClick={() => onEdit(t)}
               >
-                <span className="text-xs text-text-muted tnum truncate">
-                  {toInputDate(t.date).split("-").reverse().join(".")}
-                </span>
-
-                <span className="min-w-0 truncate text-sm">{accountText}</span>
-
-                <span className="hidden md:inline-flex items-center justify-center">
-                  <ArrowIcon type={t.type} />
-                </span>
-
-                <span className="min-w-0 truncate text-sm font-medium">
-                  <span className="md:hidden inline-flex items-center mr-1.5 align-middle">
+                {/* ── Мобильный макет: компактная карточка из двух строк ── */}
+                <div className="md:hidden flex items-start gap-3 px-3 py-3">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      background: `color-mix(in srgb, ${arrowColor(t.type)} 12%, transparent)`,
+                    }}
+                  >
                     <ArrowIcon type={t.type} />
-                  </span>
-                  {titleText}
-                </span>
+                  </div>
 
-                <span className="hidden md:block min-w-0 truncate text-sm text-text-muted">
-                  {t.note ?? ""}
-                </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className="text-sm font-medium truncate">
+                        {titleText}
+                      </p>
+                      <p
+                        className="text-sm font-semibold tnum whitespace-nowrap shrink-0"
+                        style={{ color }}
+                      >
+                        {sign}
+                        {formatMoney(t.amount, currency)}
+                      </p>
+                    </div>
+                    <p className="text-xs text-text-muted truncate mt-0.5">
+                      {accountText}
+                      {t.note ? ` · ${t.note}` : ""}
+                    </p>
+                  </div>
 
-                <span
-                  className="text-right text-sm font-semibold tnum tabular-nums whitespace-nowrap"
-                  style={{ color }}
-                >
-                  {sign}
-                  {formatMoney(t.amount, currency)}
-                </span>
-
-                <div
-                  className="relative"
-                  ref={openMenu === t.id ? menuRef : undefined}
-                >
-                  <button
-                    type="button"
-                    onClick={(e) => {
+                  <RowMenuButton
+                    isOpen={isOpen}
+                    onToggle={(e) => {
                       e.stopPropagation();
                       setOpenMenu((id) => (id === t.id ? null : t.id));
                     }}
-                    aria-label="Действия"
-                    className={cn(
-                      "inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-muted hover:text-text hover:bg-surface",
-                      "md:opacity-0 md:group-hover:opacity-100 md:transition-opacity",
-                      openMenu === t.id && "md:opacity-100 bg-surface",
-                    )}
-                  >
-                    <MoreVertical className="w-4 h-4" />
-                  </button>
+                    menuRef={isOpen ? menuRef : undefined}
+                    onEdit={() => {
+                      setOpenMenu(null);
+                      onEdit(t);
+                    }}
+                    onDelete={() => {
+                      setOpenMenu(null);
+                      onDelete(t);
+                    }}
+                    extraButtonClass="self-start -mr-1 -mt-1"
+                  />
+                </div>
 
-                  {openMenu === t.id && (
-                    <div
-                      role="menu"
-                      onClick={(e) => e.stopPropagation()}
-                      className="absolute right-0 top-full mt-1 z-20 w-44 card shadow-lg border border-border py-1"
-                    >
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setOpenMenu(null);
-                          onEdit(t);
-                        }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-bg text-left"
-                      >
-                        <Pencil className="w-3.5 h-3.5 text-text-muted" />
-                        Изменить
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setOpenMenu(null);
-                          onDelete(t);
-                        }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-bg text-expense text-left"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        Удалить
-                      </button>
-                    </div>
-                  )}
+                {/* ── Десктопный макет: табличная сетка ── */}
+                <div className="hidden md:grid grid-cols-[120px_minmax(0,1.2fr)_60px_minmax(0,1.4fr)_minmax(0,1fr)_140px_40px] items-center gap-3 px-4 py-3">
+                  <span className="text-xs text-text-muted tnum truncate">
+                    {toInputDate(t.date).split("-").reverse().join(".")}
+                  </span>
+                  <span className="min-w-0 truncate text-sm">
+                    {accountText}
+                  </span>
+                  <span className="inline-flex items-center justify-center">
+                    <ArrowIcon type={t.type} />
+                  </span>
+                  <span className="min-w-0 truncate text-sm font-medium">
+                    {titleText}
+                  </span>
+                  <span className="min-w-0 truncate text-sm text-text-muted">
+                    {t.note ?? ""}
+                  </span>
+                  <span
+                    className="text-right text-sm font-semibold tnum tabular-nums whitespace-nowrap"
+                    style={{ color }}
+                  >
+                    {sign}
+                    {formatMoney(t.amount, currency)}
+                  </span>
+                  <RowMenuButton
+                    isOpen={isOpen}
+                    onToggle={(e) => {
+                      e.stopPropagation();
+                      setOpenMenu((id) => (id === t.id ? null : t.id));
+                    }}
+                    menuRef={isOpen ? menuRef : undefined}
+                    onEdit={() => {
+                      setOpenMenu(null);
+                      onEdit(t);
+                    }}
+                    onDelete={() => {
+                      setOpenMenu(null);
+                      onDelete(t);
+                    }}
+                  />
                 </div>
               </div>
             );
           })}
         </div>
       ))}
+    </div>
+  );
+}
+
+function RowMenuButton({
+  isOpen,
+  onToggle,
+  menuRef,
+  onEdit,
+  onDelete,
+  extraButtonClass,
+}: {
+  isOpen: boolean;
+  onToggle: (e: React.MouseEvent) => void;
+  menuRef: React.RefObject<HTMLDivElement | null> | undefined;
+  onEdit: () => void;
+  onDelete: () => void;
+  extraButtonClass?: string;
+}) {
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label="Действия"
+        className={cn(
+          "inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-muted hover:text-text hover:bg-surface",
+          "md:opacity-0 md:group-hover:opacity-100 md:transition-opacity",
+          isOpen && "md:opacity-100 bg-surface",
+          extraButtonClass,
+        )}
+      >
+        <MoreVertical className="w-4 h-4" />
+      </button>
+
+      {isOpen && (
+        <div
+          role="menu"
+          onClick={(e) => e.stopPropagation()}
+          className="absolute right-0 top-full mt-1 z-20 w-44 card shadow-lg border border-border py-1"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={onEdit}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-bg text-left"
+          >
+            <Pencil className="w-3.5 h-3.5 text-text-muted" />
+            Изменить
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={onDelete}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-bg text-expense text-left"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Удалить
+          </button>
+        </div>
+      )}
     </div>
   );
 }
