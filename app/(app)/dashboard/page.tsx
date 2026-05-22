@@ -4,12 +4,14 @@ import {
   ArrowUp,
   Coins,
   HandCoins,
+  Lock,
   TrendingDown,
   TrendingUp,
   Wallet,
 } from "lucide-react";
 import { prisma } from "@/lib/db";
-import { requireActiveSubscription, requireUser } from "@/lib/dal";
+import { getCurrentAccess, requireUser } from "@/lib/dal";
+import { hasPaidAccess } from "@/lib/access";
 import {
   decimalToNumber,
   endOfMonth,
@@ -30,9 +32,10 @@ import { DailyChart } from "@/components/app/dashboard/DailyChart";
 export const metadata = { title: "Дашборд — Финансыр" };
 
 export default async function DashboardPage() {
-  await requireActiveSubscription();
+  const { tier } = await getCurrentAccess();
   const user = await requireUser();
   const userId = user.id;
+  const paid = hasPaidAccess(tier);
 
   const monthStart = startOfMonth();
   const monthEnd = endOfMonth();
@@ -87,13 +90,13 @@ export default async function DashboardPage() {
     prisma.asset.findMany({ where: { userId }, select: { purchasePrice: true, currentValue: true } }),
     prisma.incomeCategory.findMany({
       where: { userId },
-      orderBy: { createdAt: "asc" },
-      select: { id: true, name: true, icon: true },
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+      select: { id: true, name: true, icon: true, parentId: true },
     }),
     prisma.expenseCategory.findMany({
       where: { userId },
-      orderBy: { createdAt: "asc" },
-      select: { id: true, name: true, icon: true },
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+      select: { id: true, name: true, icon: true, parentId: true },
     }),
     prisma.account.findMany({
       where: { userId },
@@ -176,6 +179,7 @@ export default async function DashboardPage() {
             expenseCategories={expenseCategories}
             debts={debtOptions}
             personNames={personNames}
+            tier={tier}
           />
         }
       />
@@ -218,42 +222,44 @@ export default async function DashboardPage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
           <Tile
             label="Я должен"
-            value={formatMoney(owed, "RUB")}
+            value={paid ? formatMoney(owed, "RUB") : "—"}
             color="var(--color-debt-owe)"
             icon={HandCoins}
-            href="/debts"
+            href={paid ? "/debts" : "/billing"}
+            locked={!paid}
           />
           <Tile
             label="Мне должны"
-            value={formatMoney(credit, "RUB")}
+            value={paid ? formatMoney(credit, "RUB") : "—"}
             color="var(--color-debt-get)"
             icon={HandCoins}
-            href="/debts"
+            href={paid ? "/debts" : "/billing"}
+            locked={!paid}
           />
-          <div className="card card-hover p-3 sm:p-4 col-span-2 sm:col-span-1 min-w-0">
-            <Link href="/assets" className="block min-w-0">
-              <div className="flex items-center gap-1.5 text-text-muted text-xs sm:text-sm mb-1 min-w-0">
-                <Coins
-                  className="w-3.5 h-3.5 shrink-0"
-                  style={{ color: "var(--color-asset)" }}
-                />
-                <span className="truncate">Стоимость активов</span>
-              </div>
-              <p className="font-display text-lg sm:text-2xl font-bold tnum truncate">
-                {formatMoney(assetValue, "RUB")}
-              </p>
-              {assetCost > 0 && (
+          <Tile
+            label="Стоимость активов"
+            value={paid ? formatMoney(assetValue, "RUB") : "—"}
+            color="var(--color-asset)"
+            icon={Coins}
+            href={paid ? "/assets" : "/billing"}
+            locked={!paid}
+            extra={
+              paid && assetCost > 0 ? (
                 <p
                   className="text-xs sm:text-sm font-medium tnum"
                   style={{
-                    color: assetPct >= 0 ? "var(--color-income)" : "var(--color-expense)",
+                    color:
+                      assetPct >= 0
+                        ? "var(--color-income)"
+                        : "var(--color-expense)",
                   }}
                 >
                   {assetPct >= 0 ? "↑" : "↓"} {Math.abs(assetPct).toFixed(1)}%
                 </p>
-              )}
-            </Link>
-          </div>
+              ) : null
+            }
+            colSpan="col-span-2 sm:col-span-1"
+          />
         </div>
 
         <div className="card p-4 sm:p-5">
@@ -332,29 +338,40 @@ function Tile({
   color,
   icon: Icon,
   href,
+  locked,
+  extra,
+  colSpan,
 }: {
   label: string;
   value: string;
   color: string;
   icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   href?: string;
+  locked?: boolean;
+  extra?: React.ReactNode;
+  colSpan?: string;
 }) {
   const content = (
     <>
       <div className="flex items-center gap-1.5 text-text-muted text-xs sm:text-sm mb-1 min-w-0">
         <Icon className="w-3.5 h-3.5 shrink-0" style={{ color }} />
         <span className="truncate">{label}</span>
+        {locked && <Lock className="w-3 h-3 shrink-0 opacity-60 ml-auto" />}
       </div>
       <p
         className="font-display text-lg sm:text-2xl font-bold tnum truncate"
-        style={{ color }}
+        style={{ color: locked ? "var(--color-text-muted)" : color }}
       >
         {value}
       </p>
+      {extra}
     </>
   );
   return (
-    <div className="card card-hover p-3 sm:p-4 min-w-0">
+    <div
+      className={`card card-hover p-3 sm:p-4 min-w-0 ${colSpan ?? ""}`}
+      title={locked ? "Доступно в платной подписке" : undefined}
+    >
       {href ? <Link href={href}>{content}</Link> : content}
     </div>
   );

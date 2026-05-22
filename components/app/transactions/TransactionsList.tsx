@@ -2,13 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Plus, Inbox } from "lucide-react";
+import { Inbox, Plus } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { ScrollableTabs } from "@/components/ui/ScrollableTabs";
-import { cn, formatDateShort, formatMoney } from "@/lib/utils";
-import { getTransactionTypeConfig, isDebtType } from "@/lib/transactionMeta";
-import { ASSET_TYPES } from "@/lib/assetTypes";
+import { formatDate, toInputDate } from "@/lib/utils";
+import { isDebtType } from "@/lib/transactionMeta";
+import { type AccessTier } from "@/lib/access";
 import {
   TransactionForm,
   TRANSACTION_MODAL_MAX_WIDTH,
@@ -17,6 +16,12 @@ import {
   type DebtOption,
   type TransactionDto,
 } from "./TransactionForm";
+import {
+  EMPTY_FILTER,
+  TransactionsFilters,
+  type FilterState,
+} from "./TransactionsFilters";
+import { TransactionsTable } from "./TransactionsTable";
 
 export type TransactionWithRefs = TransactionDto & {
   incomeCategory: CategoryOption | null;
@@ -25,16 +30,42 @@ export type TransactionWithRefs = TransactionDto & {
   toAccount: (AccountOption & { currency: string }) | null;
 };
 
-type Filter = "ALL" | "INCOME" | "EXPENSE" | "TRANSFER" | "DEBT" | "ASSET_BUY";
+function matchesSearch(t: TransactionWithRefs, query: string): boolean {
+  if (!query) return true;
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const haystack = [
+    t.note ?? "",
+    t.personName ?? "",
+    t.assetName ?? "",
+    t.incomeCategory?.name ?? "",
+    t.expenseCategory?.name ?? "",
+    t.fromAccount?.name ?? "",
+    t.toAccount?.name ?? "",
+  ]
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(q);
+}
 
-const FILTER_TABS: { id: Filter; label: string }[] = [
-  { id: "ALL", label: "Все" },
-  { id: "INCOME", label: "Доходы" },
-  { id: "EXPENSE", label: "Расходы" },
-  { id: "DEBT", label: "Долги" },
-  { id: "ASSET_BUY", label: "Активы" },
-  { id: "TRANSFER", label: "Перемещения" },
-];
+function applyFilter(
+  items: TransactionWithRefs[],
+  filter: FilterState,
+): TransactionWithRefs[] {
+  const min = filter.amountMin ? Number(filter.amountMin) : null;
+  const max = filter.amountMax ? Number(filter.amountMax) : null;
+  return items.filter((t) => {
+    if (filter.type !== "ALL") {
+      if (filter.type === "DEBT" && !isDebtType(t.type)) return false;
+      if (filter.type !== "DEBT" && t.type !== filter.type) return false;
+    }
+    if (filter.date && toInputDate(t.date) !== filter.date) return false;
+    if (min !== null && !Number.isNaN(min) && t.amount < min) return false;
+    if (max !== null && !Number.isNaN(max) && t.amount > max) return false;
+    if (!matchesSearch(t, filter.search)) return false;
+    return true;
+  });
+}
 
 export function TransactionsList({
   items,
@@ -43,6 +74,7 @@ export function TransactionsList({
   expenseCategories,
   debts,
   personNames = [],
+  tier = "PAID",
 }: {
   items: TransactionWithRefs[];
   accounts: AccountOption[];
@@ -50,19 +82,16 @@ export function TransactionsList({
   expenseCategories: CategoryOption[];
   debts: DebtOption[];
   personNames?: string[];
+  tier?: AccessTier;
 }) {
   const router = useRouter();
-  const [filter, setFilter] = useState<Filter>("ALL");
+  const [filter, setFilter] = useState<FilterState>(EMPTY_FILTER);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TransactionWithRefs | null>(null);
   const [deleting, setDeleting] = useState<TransactionWithRefs | null>(null);
   const [deletePending, setDeletePending] = useState(false);
 
-  const filtered = useMemo(() => {
-    if (filter === "ALL") return items;
-    if (filter === "DEBT") return items.filter((i) => isDebtType(i.type));
-    return items.filter((i) => i.type === filter);
-  }, [items, filter]);
+  const filtered = useMemo(() => applyFilter(items, filter), [items, filter]);
 
   const refresh = () => {
     setCreating(false);
@@ -107,6 +136,7 @@ export function TransactionsList({
             expenseCategories={expenseCategories}
             debts={debts}
             personNames={personNames}
+            tier={tier}
             onSuccess={refresh}
           />
         </Modal>
@@ -116,108 +146,30 @@ export function TransactionsList({
 
   return (
     <>
-      <ScrollableTabs className="mb-4">
-        {FILTER_TABS.map((f) => (
+      <TransactionsFilters value={filter} onChange={setFilter} tier={tier} />
+
+      {filtered.length === 0 ? (
+        <div className="card p-8 text-center">
+          <p className="text-text-muted text-sm">
+            {filter.date
+              ? `На ${formatDate(filter.date)} операций нет`
+              : "Не нашли операций по фильтру"}
+          </p>
           <button
-            key={f.id}
-            onClick={() => setFilter(f.id)}
-            className={cn(
-              "px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap",
-              filter === f.id ? "bg-surface shadow-sm" : "text-text-muted",
-            )}
+            type="button"
+            onClick={() => setFilter(EMPTY_FILTER)}
+            className="mt-3 text-sm font-medium text-primary hover:underline"
           >
-            {f.label}
+            Сбросить фильтры
           </button>
-        ))}
-      </ScrollableTabs>
-
-      <div className="card divide-y divide-border">
-        {filtered.map((t) => {
-          const conf = getTransactionTypeConfig(t.type);
-          const Icon = conf.icon;
-          const category = t.incomeCategory ?? t.expenseCategory;
-          const isDebt = isDebtType(t.type);
-          const isAsset = t.type === "ASSET_BUY";
-          const accountName = isDebt
-            ? t.toAccount?.name ?? t.fromAccount?.name ?? ""
-            : t.type === "INCOME"
-            ? t.toAccount?.name
-            : t.type === "EXPENSE" || isAsset
-            ? t.fromAccount?.name
-            : `${t.fromAccount?.name ?? "?"} → ${t.toAccount?.name ?? "?"}`;
-          const title = isDebt
-            ? t.personName ?? conf.label
-            : isAsset
-            ? t.assetName ?? conf.label
-            : category?.name ??
-              (t.type === "TRANSFER" ? "Перемещение" : "Без категории");
-          const accountLabel =
-            isDebt || isAsset
-              ? [conf.label, accountName].filter(Boolean).join(" · ")
-              : accountName;
-          const assetEmoji = isAsset && t.assetType ? ASSET_TYPES[t.assetType]?.emoji : null;
-          const currency =
-            t.toAccount?.currency ?? t.fromAccount?.currency ?? "RUB";
-
-          return (
-            <div
-              key={t.id}
-              className="group flex items-center gap-3 p-3 sm:p-4 hover:bg-bg/60 first:rounded-t-xl last:rounded-b-xl"
-            >
-              <button
-                type="button"
-                onClick={() => setEditing(t)}
-                className="flex items-center gap-3 flex-1 min-w-0 text-left"
-                aria-label="Редактировать операцию"
-              >
-                <span
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-base shrink-0"
-                  style={{
-                    background: `color-mix(in srgb, ${conf.color} 14%, transparent)`,
-                  }}
-                >
-                  {isAsset && assetEmoji ? (
-                    <span className="text-lg">{assetEmoji}</span>
-                  ) : !isDebt && !isAsset && category?.icon ? (
-                    <span className="text-lg">{category.icon}</span>
-                  ) : (
-                    <Icon className="w-5 h-5" style={{ color: conf.color }} />
-                  )}
-                </span>
-
-                <span className="flex-1 min-w-0">
-                  <span className="block font-medium truncate">{title}</span>
-                  <span className="block text-xs text-text-muted truncate">
-                    {accountLabel}
-                    {t.note ? ` · ${t.note}` : ""}
-                  </span>
-                </span>
-
-                <span className="text-right shrink-0">
-                  <span
-                    className="block font-semibold tnum text-sm sm:text-base"
-                    style={{ color: conf.color }}
-                  >
-                    {conf.sign}
-                    {formatMoney(t.amount, currency)}
-                  </span>
-                  <span className="block text-xs text-text-muted">
-                    {formatDateShort(t.date)}
-                  </span>
-                </span>
-              </button>
-
-              <button
-                onClick={() => setDeleting(t)}
-                aria-label="Удалить операцию"
-                className="p-2 text-text-muted hover:text-expense rounded-lg shrink-0 sm:opacity-0 sm:group-hover:opacity-100 sm:transition-opacity"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          );
-        })}
-      </div>
+        </div>
+      ) : (
+        <TransactionsTable
+          items={filtered}
+          onEdit={setEditing}
+          onDelete={setDeleting}
+        />
+      )}
 
       <Modal
         open={creating}
@@ -231,6 +183,7 @@ export function TransactionsList({
           expenseCategories={expenseCategories}
           debts={debts}
           personNames={personNames}
+          tier={tier}
           onSuccess={refresh}
         />
       </Modal>
@@ -249,6 +202,7 @@ export function TransactionsList({
             expenseCategories={expenseCategories}
             debts={debts}
             personNames={personNames}
+            tier={tier}
             onSuccess={refresh}
           />
         )}
@@ -285,12 +239,14 @@ export function AddTransactionButton({
   expenseCategories,
   debts,
   personNames = [],
+  tier = "PAID",
 }: {
   accounts: AccountOption[];
   incomeCategories: CategoryOption[];
   expenseCategories: CategoryOption[];
   debts: DebtOption[];
   personNames?: string[];
+  tier?: AccessTier;
 }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
@@ -313,6 +269,7 @@ export function AddTransactionButton({
           expenseCategories={expenseCategories}
           debts={debts}
           personNames={personNames}
+          tier={tier}
           onSuccess={() => {
             setOpen(false);
             router.refresh();

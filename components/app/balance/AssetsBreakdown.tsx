@@ -31,7 +31,6 @@ export function AssetsBreakdown({ items }: { items: AssetBreakdownItem[] }) {
             <div key={a.type}>
               <div className="flex items-baseline justify-between gap-3 text-sm">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-base">{a.emoji}</span>
                   <span className="font-medium truncate">{a.label}</span>
                   <span className="text-xs text-text-muted shrink-0">· {a.count}</span>
                 </div>

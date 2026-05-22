@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getUserIdOrUnauthorized, handleZod, jsonError, readJson } from "@/lib/api";
+import { getPaidUserIdOrForbidden, handleZod, jsonError, readJson } from "@/lib/api";
 import { assetValueSchema } from "@/lib/validators";
 import { addAssetValue } from "@/lib/assetRepo";
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const auth = await getUserIdOrUnauthorized();
+  const auth = await getPaidUserIdOrForbidden();
   if ("response" in auth) return auth.response;
   const { id } = await ctx.params;
 
@@ -20,7 +20,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const auth = await getUserIdOrUnauthorized();
+  const auth = await getPaidUserIdOrForbidden();
   if ("response" in auth) return auth.response;
   const { id } = await ctx.params;
 

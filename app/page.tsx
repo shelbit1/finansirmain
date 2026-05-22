@@ -161,73 +161,137 @@ function Features() {
   );
 }
 
-const PLAN_INCLUDES = [
-  "Счета и операции без лимитов",
+const FREE_INCLUDES = [
+  "Операции: доходы, расходы, перемещения",
+  "Отчёт «Доходы − Расходы»",
+  "Счета и категории",
+];
+
+const FREE_EXCLUDES = [
+  "Долги — «я должен» и «должны мне»",
+  "Активы и портфель",
+  "Отчёт «Баланс»",
+  "Планы",
+];
+
+const PRO_INCLUDES = [
+  "Всё, что в бесплатном",
   "Долги: «я должен» и «должны мне»",
   "Активы и портфель",
-  "Отчёты, планы, ежедневная памятка",
-  "Поддержка по email",
+  "Отчёт «Баланс»",
+  "Планы, ежедневная памятка",
+  "Приоритетная поддержка",
 ];
 
 function Pricing() {
   return (
     <section id="pricing" className="px-6 py-16">
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <div className="text-center mb-10">
           <h2 className="font-display text-3xl sm:text-4xl font-bold">
-            Простая цена
+            Тарифы
           </h2>
           <p className="text-text-muted mt-2">
-            Один тариф для всех. Без скрытых платежей и допуслуг.
+            Начните бесплатно — без карты. Подключайте платный тариф, когда нужны
+            долги, активы и отчёт «Баланс».
           </p>
         </div>
 
-        <div className="card p-8 sm:p-10">
-          <div className="text-center mb-6">
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
-              <Sparkles className="w-3.5 h-3.5" />
-              Пробный период {TRIAL_DAYS} дней — бесплатно
-            </span>
-            <div className="mt-5 flex items-end justify-center gap-2">
-              <span className="font-display text-5xl sm:text-6xl font-bold tracking-tight">
-                {formatMoney(PLAN_PRICE_RUB).replace(",00", "")}
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="card p-8 sm:p-10 flex flex-col">
+            <div className="mb-5">
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-text-muted/10 text-text-muted text-xs font-medium">
+                Бесплатно
               </span>
-              <span className="text-text-muted mb-2">
-                / {PLAN_PERIOD_MONTHS} мес.
-              </span>
+              <div className="mt-5 flex items-end gap-2">
+                <span className="font-display text-5xl sm:text-6xl font-bold tracking-tight">
+                  0&nbsp;₽
+                </span>
+                <span className="text-text-muted mb-2">/ навсегда</span>
+              </div>
+              <p className="text-sm text-text-muted mt-2">
+                Доступно сразу после регистрации и после {TRIAL_DAYS}-дневного
+                пробного периода
+              </p>
             </div>
-            <p className="text-sm text-text-muted mt-2">
-              Ежемесячная подписка, отмена в любой момент
+
+            <ul className="space-y-2 mb-4">
+              {FREE_INCLUDES.map((item) => (
+                <li key={item} className="flex items-start gap-2 text-sm">
+                  <Check className="w-4 h-4 text-income shrink-0 mt-0.5" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">
+              Недоступно
             </p>
-          </div>
+            <ul className="space-y-2 mb-6">
+              {FREE_EXCLUDES.map((item) => (
+                <li
+                  key={item}
+                  className="flex items-start gap-2 text-sm text-text-muted"
+                >
+                  <span className="w-4 h-4 flex items-center justify-center shrink-0 mt-0.5">
+                    —
+                  </span>
+                  {item}
+                </li>
+              ))}
+            </ul>
 
-          <ul className="grid sm:grid-cols-2 gap-y-2 gap-x-6 mb-6">
-            {PLAN_INCLUDES.map((item) => (
-              <li key={item} className="flex items-start gap-2 text-sm">
-                <Check className="w-4 h-4 text-income shrink-0 mt-0.5" />
-                {item}
-              </li>
-            ))}
-          </ul>
-
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Link href="/register" className="btn btn-primary flex-1">
+            <Link href="/register" className="btn btn-ghost mt-auto">
               Начать бесплатно
             </Link>
-            <Link href="/refund" className="btn btn-ghost flex-1">
-              Условия возврата
-            </Link>
           </div>
 
-          <p className="text-xs text-text-muted text-center mt-5 leading-relaxed">
-            Оплата через АО «Т-Банк». Реквизиты карты не попадают на наши
-            серверы. Возврат — в течение 14 дней по{" "}
-            <Link href="/refund" className="text-primary hover:underline">
-              политике возвратов
-            </Link>
-            .
-          </p>
+          <div className="card p-8 sm:p-10 border-primary/40 ring-1 ring-primary/20 flex flex-col">
+            <div className="mb-5">
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                <Sparkles className="w-3.5 h-3.5" />
+                Платный — {TRIAL_DAYS} дней бесплатно
+              </span>
+              <div className="mt-5 flex items-end gap-2">
+                <span className="font-display text-5xl sm:text-6xl font-bold tracking-tight">
+                  {formatMoney(PLAN_PRICE_RUB).replace(",00", "")}
+                </span>
+                <span className="text-text-muted mb-2">
+                  / {PLAN_PERIOD_MONTHS} мес.
+                </span>
+              </div>
+              <p className="text-sm text-text-muted mt-2">
+                Ежемесячная подписка, отмена в любой момент
+              </p>
+            </div>
+
+            <ul className="space-y-2 mb-6">
+              {PRO_INCLUDES.map((item) => (
+                <li key={item} className="flex items-start gap-2 text-sm">
+                  <Check className="w-4 h-4 text-income shrink-0 mt-0.5" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+
+            <div className="flex flex-col sm:flex-row gap-3 mt-auto">
+              <Link href="/register" className="btn btn-primary flex-1">
+                Попробовать {TRIAL_DAYS} дней
+              </Link>
+              <Link href="/refund" className="btn btn-ghost flex-1">
+                Условия возврата
+              </Link>
+            </div>
+          </div>
         </div>
+
+        <p className="text-xs text-text-muted text-center mt-6 leading-relaxed">
+          Оплата через АО «Т-Банк». Реквизиты карты не попадают на наши
+          серверы. Возврат — в течение 14 дней по{" "}
+          <Link href="/refund" className="text-primary hover:underline">
+            политике возвратов
+          </Link>
+          .
+        </p>
       </div>
     </section>
   );

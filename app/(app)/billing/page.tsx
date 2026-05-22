@@ -106,11 +106,15 @@ export default async function BillingPage() {
           <ul className="text-sm space-y-2 mt-4">
             <li className="flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 text-income shrink-0 mt-0.5" />
-              Все разделы сервиса без ограничений
+              Долги: «я должен» и «должны мне»
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 text-income shrink-0 mt-0.5" />
-              Долги, активы, отчёты, планы
+              Активы и отчёт «Баланс»
+            </li>
+            <li className="flex items-start gap-2">
+              <CheckCircle2 className="w-4 h-4 text-income shrink-0 mt-0.5" />
+              Планы и ежедневная памятка
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 text-income shrink-0 mt-0.5" />
@@ -121,6 +125,12 @@ export default async function BillingPage() {
               Возврат в течение 14 дней
             </li>
           </ul>
+
+          <div className="mt-4 rounded-lg bg-bg border border-border p-3 text-xs text-text-muted">
+            После окончания подписки остаётся бесплатный тариф: операции «Доходы»,
+            «Расходы», «Перемещения» и отчёт «Доходы − Расходы» — без ограничений
+            по времени.
+          </div>
 
           <div className="border-t border-border mt-5 pt-5">
             {accessEnd ? (

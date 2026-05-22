@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { getUserIdOrUnauthorized, handleZod, jsonError, readJson } from "@/lib/api";
+import { getPaidUserIdOrForbidden, handleZod, jsonError, readJson } from "@/lib/api";
 import { debtDirectionSchema, debtSchema } from "@/lib/validators";
 
 export async function GET(req: Request) {
-  const auth = await getUserIdOrUnauthorized();
+  const auth = await getPaidUserIdOrForbidden();
   if ("response" in auth) return auth.response;
 
   const url = new URL(req.url);
@@ -32,7 +32,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await getUserIdOrUnauthorized();
+  const auth = await getPaidUserIdOrForbidden();
   if ("response" in auth) return auth.response;
 
   try {

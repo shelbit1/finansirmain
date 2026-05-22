@@ -1,22 +1,33 @@
 import Link from "next/link";
-import { AlertTriangle, Clock } from "lucide-react";
+import { Clock, Lock } from "lucide-react";
 import type { SubscriptionView } from "@/lib/billing";
+import type { AccessTier } from "@/lib/access";
 import { PLAN_PRICE_RUB } from "@/lib/planPricing";
 import { formatMoney } from "@/lib/utils";
 
-export function SubscriptionBanner({ view }: { view: SubscriptionView }) {
-  if (view.expired) {
+export function SubscriptionBanner({
+  view,
+  tier,
+}: {
+  view: SubscriptionView;
+  tier: AccessTier;
+}) {
+  if (tier === "FREE") {
     return (
-      <div className="rounded-xl border border-expense/30 bg-expense/8 px-4 py-3 flex items-start gap-3 mb-4 sm:mb-5">
-        <AlertTriangle className="w-5 h-5 text-expense shrink-0 mt-0.5" />
+      <div className="rounded-xl border border-primary/30 bg-primary/8 px-4 py-3 flex items-start gap-3 mb-4 sm:mb-5">
+        <Lock className="w-5 h-5 text-primary shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium">Подписка истекла</p>
+          <p className="text-sm font-medium">Вы на бесплатном тарифе</p>
           <p className="text-xs text-text-muted mt-0.5">
-            Чтобы вернуть доступ ко всем разделам — оплатите{" "}
+            Доступны операции «Доходы», «Расходы», «Перемещения» и отчёт
+            «Доходы − Расходы». Долги, активы и «Баланс» — после оплаты{" "}
             {formatMoney(PLAN_PRICE_RUB)} за месяц.
           </p>
         </div>
-        <Link href="/billing" className="btn btn-primary h-9 px-3 text-sm shrink-0">
+        <Link
+          href="/billing"
+          className="btn btn-primary h-9 px-3 text-sm shrink-0"
+        >
           Оплатить
         </Link>
       </div>
@@ -34,7 +45,8 @@ export function SubscriptionBanner({ view }: { view: SubscriptionView }) {
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium">{label}</p>
           <p className="text-xs text-text-muted mt-0.5">
-            Продлите подписку, чтобы не потерять доступ к сервису.
+            После окончания останется бесплатный тариф с базовыми функциями. Продлите
+            подписку, чтобы сохранить полный доступ.
           </p>
         </div>
         <Link href="/billing" className="btn btn-primary h-9 px-3 text-sm shrink-0">

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { getUserIdOrUnauthorized, handleZod, jsonError, readJson } from "@/lib/api";
+import { getPaidUserIdOrForbidden, handleZod, jsonError, readJson } from "@/lib/api";
 import { debtPaymentSchema } from "@/lib/validators";
 import { addPayment } from "@/lib/debtRepo";
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const auth = await getUserIdOrUnauthorized();
+  const auth = await getPaidUserIdOrForbidden();
   if ("response" in auth) return auth.response;
   const { id } = await ctx.params;
 

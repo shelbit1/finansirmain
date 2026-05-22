@@ -2,10 +2,12 @@ import "server-only";
 import type { TransactionType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { decimalToNumber } from "@/lib/utils";
-import { ASSET_TYPES } from "@/lib/assetTypes";
+import {
+  ASSET_CATEGORIES,
+  assetCategory,
+  type AssetCategory,
+} from "@/lib/assetTypes";
 import { DEBT_LABELS, DEBT_TYPES, type DebtType } from "@/lib/transactionMeta";
-import type { AssetType } from "@prisma/client";
-
 export type ReportGranularity = "day" | "week" | "month";
 
 export type ReportPeriod = {
@@ -22,6 +24,11 @@ export type ReportRow = {
   color: string | null;
   byPeriod: number[];
   total: number;
+  /**
+   * Дочерние строки (подкатегории) для разворачивающейся группы.
+   * Родительская строка включает агрегированные значения по всем детям.
+   */
+  children?: ReportRow[];
 };
 
 export type ReportSection = {
@@ -173,21 +180,28 @@ export async function buildReport(
       }),
       prisma.incomeCategory.findMany({
         where: { userId },
-        orderBy: { name: "asc" },
-        select: { id: true, name: true, icon: true, color: true },
+        orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+        select: { id: true, name: true, icon: true, color: true, parentId: true },
       }),
       prisma.expenseCategory.findMany({
         where: { userId },
-        orderBy: { name: "asc" },
-        select: { id: true, name: true, icon: true, color: true },
+        orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+        select: { id: true, name: true, icon: true, color: true, parentId: true },
       }),
     ]);
 
   function aggregate(
     txs: { amount: unknown; date: Date; key: string | null }[],
-    categories: { id: string; name: string; icon: string | null; color: string | null }[],
+    categories: {
+      id: string;
+      name: string;
+      icon: string | null;
+      color: string | null;
+      parentId: string | null;
+    }[],
   ): ReportSection {
-    const rowsMap = new Map<string, ReportRow>();
+    type InternalRow = ReportRow & { parentId: string | null };
+    const rowsMap = new Map<string, InternalRow>();
     for (const c of categories) {
       rowsMap.set(c.id, {
         id: c.id,
@@ -196,6 +210,7 @@ export async function buildReport(
         color: c.color,
         byPeriod: empty(),
         total: 0,
+        parentId: c.parentId,
       });
     }
     const orphan: ReportRow = {
@@ -221,11 +236,50 @@ export async function buildReport(
       sectionTotal += amount;
     }
 
-    const rows = [...rowsMap.values()].filter((r) => r.total > 0);
-    rows.sort((a, b) => b.total - a.total);
+    // Раскладываем в дерево: parent → children
+    const childrenByParent = new Map<string, InternalRow[]>();
+    const roots: InternalRow[] = [];
+    for (const r of rowsMap.values()) {
+      if (r.parentId && rowsMap.has(r.parentId)) {
+        const arr = childrenByParent.get(r.parentId) ?? [];
+        arr.push(r);
+        childrenByParent.set(r.parentId, arr);
+      } else {
+        roots.push(r);
+      }
+    }
+
+    // Сначала фильтруем/сортируем детей, затем агрегируем их суммы в родителя.
+    for (const root of roots) {
+      const kids = childrenByParent.get(root.id);
+      if (!kids) continue;
+      const visibleKids = kids
+        .filter((k) => k.total > 0)
+        .sort((a, b) => b.total - a.total);
+      if (visibleKids.length === 0) continue;
+      for (const kid of visibleKids) {
+        root.total += kid.total;
+        for (let i = 0; i < periods.length; i++) {
+          root.byPeriod[i] += kid.byPeriod[i];
+        }
+      }
+      root.children = visibleKids.map(stripInternal);
+    }
+
+    const rows = roots
+      .filter((r) => r.total > 0)
+      .sort((a, b) => b.total - a.total)
+      .map(stripInternal);
     if (orphan.total > 0) rows.push(orphan);
 
     return { rows, byPeriod: sectionByPeriod, total: sectionTotal };
+  }
+
+  // Возвращает чистую ReportRow без служебного parentId.
+  function stripInternal(r: ReportRow & { parentId?: string | null }): ReportRow {
+    const { parentId: _omit, ...rest } = r;
+    void _omit;
+    return rest;
   }
 
   const income = aggregate(
@@ -262,16 +316,15 @@ export async function buildReport(
     total: debtTotal,
   };
 
-  // Секция «Активы»: покупки ASSET_BUY по типу актива, не влияет на сальдо
-  const assetRowsMap = new Map<AssetType, ReportRow>();
-  for (const [type, meta] of Object.entries(ASSET_TYPES) as [
-    AssetType,
-    { label: string; emoji: string },
-  ][]) {
-    assetRowsMap.set(type, {
-      id: type,
-      name: meta.label,
-      icon: meta.emoji,
+  // Секция «Активы»: покупки ASSET_BUY по категории актива, не влияет на сальдо.
+  // Все исторические типы (BUSINESS/STOCKS/CRYPTO/…) сводятся к одной из трёх
+  // видимых категорий: REAL_ESTATE, VEHICLE, OTHER.
+  const assetRowsMap = new Map<AssetCategory, ReportRow>();
+  for (const cat of ASSET_CATEGORIES) {
+    assetRowsMap.set(cat.id, {
+      id: cat.id,
+      name: cat.label,
+      icon: null,
       color: null,
       byPeriod: empty(),
       total: 0,
@@ -292,7 +345,9 @@ export async function buildReport(
     if (idx < 0) continue;
     const amount = decimalToNumber(t.amount);
     const type = t.asset?.type;
-    const row = type ? assetRowsMap.get(type) ?? assetOrphan : assetOrphan;
+    const row = type
+      ? (assetRowsMap.get(assetCategory(type)) ?? assetOrphan)
+      : assetOrphan;
     row.byPeriod[idx] += amount;
     row.total += amount;
     assetByPeriod[idx] += amount;

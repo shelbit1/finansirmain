@@ -1,6 +1,6 @@
 import "server-only";
 import { NextResponse } from "next/server";
-import { getUserIdOrUnauthorized, jsonError } from "@/lib/api";
+import { getPaidUserIdOrForbidden, jsonError } from "@/lib/api";
 import { computeBalanceHistory } from "@/lib/balanceHistory";
 import type { Granularity } from "@/lib/balanceHistoryTypes";
 
@@ -11,7 +11,7 @@ function parseGranularity(v: string | null): Granularity {
 }
 
 export async function GET(req: Request) {
-  const auth = await getUserIdOrUnauthorized();
+  const auth = await getPaidUserIdOrForbidden();
   if ("response" in auth) return auth.response;
 
   const url = new URL(req.url);

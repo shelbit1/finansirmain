@@ -17,12 +17,14 @@ import {
   ChevronRight,
   Mail,
   Phone,
+  Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { AccessTier } from "@/lib/access";
 
 type IconComponent = ComponentType<{ className?: string }>;
 
-type NavItem = { href: string; label: string; icon: IconComponent };
+type NavItem = { href: string; label: string; icon: IconComponent; paid?: boolean };
 
 type NavGroup = {
   id: string;
@@ -46,13 +48,13 @@ const NAV: NavEntry[] = [
     icon: BarChart3,
     children: [
       { href: "/reports", label: "Доходы − Расходы", icon: ArrowLeftRight },
-      { href: "/balance", label: "Баланс", icon: Scale },
+      { href: "/balance", label: "Баланс", icon: Scale, paid: true },
     ],
   },
-  { href: "/assets", label: "Активы", icon: Coins },
+  { href: "/assets", label: "Активы", icon: Coins, paid: true },
   { href: "/accounts", label: "Счета", icon: Wallet },
-  { href: "/debts", label: "Долги", icon: HandCoins },
-  { href: "/plans", label: "Планы", icon: CalendarCheck },
+  { href: "/debts", label: "Долги", icon: HandCoins, paid: true },
+  { href: "/plans", label: "Планы", icon: CalendarCheck, paid: true },
   { href: "/billing", label: "Подписка", icon: CreditCard },
   { href: "/categories", label: "Категории", icon: Tag },
 ];
@@ -61,7 +63,8 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-export function Sidebar() {
+export function Sidebar({ tier }: { tier: AccessTier }) {
+  const isFree = tier === "FREE";
   const pathname = usePathname();
   const reportsActive =
     isActive(pathname, "/reports") || isActive(pathname, "/balance");
@@ -101,10 +104,13 @@ export function Sidebar() {
                   <div className="mt-0.5 pl-7 space-y-0.5">
                     {entry.children.map((child) => {
                       const active = isActive(pathname, child.href);
+                      const locked = isFree && child.paid;
+                      const href = locked ? "/billing" : child.href;
                       return (
                         <Link
                           key={child.href}
-                          href={child.href}
+                          href={href}
+                          title={locked ? "Доступно в платной подписке" : undefined}
                           className={cn(
                             "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium",
                             active
@@ -113,7 +119,8 @@ export function Sidebar() {
                           )}
                         >
                           <child.icon className="w-4 h-4 shrink-0" />
-                          {child.label}
+                          <span className="flex-1">{child.label}</span>
+                          {locked && <Lock className="w-3 h-3 shrink-0 opacity-60" />}
                         </Link>
                       );
                     })}
@@ -123,17 +130,21 @@ export function Sidebar() {
             );
           }
           const active = isActive(pathname, entry.href);
+          const locked = isFree && entry.paid;
+          const href = locked ? "/billing" : entry.href;
           return (
             <Link
               key={entry.href}
-              href={entry.href}
+              href={href}
+              title={locked ? "Доступно в платной подписке" : undefined}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium",
                 active ? "bg-primary/10 text-primary" : "text-text hover:bg-bg",
               )}
             >
               <entry.icon className="w-4.5 h-4.5 shrink-0" />
-              {entry.label}
+              <span className="flex-1">{entry.label}</span>
+              {locked && <Lock className="w-3.5 h-3.5 shrink-0 opacity-60" />}
             </Link>
           );
         })}

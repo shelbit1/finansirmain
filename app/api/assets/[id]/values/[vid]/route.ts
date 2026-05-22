@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { getUserIdOrUnauthorized, jsonError } from "@/lib/api";
+import { getPaidUserIdOrForbidden, jsonError } from "@/lib/api";
 import { deleteAssetValue } from "@/lib/assetRepo";
 
 export async function DELETE(
   _req: Request,
   ctx: { params: Promise<{ id: string; vid: string }> },
 ) {
-  const auth = await getUserIdOrUnauthorized();
+  const auth = await getPaidUserIdOrForbidden();
   if ("response" in auth) return auth.response;
   const { id, vid } = await ctx.params;
 

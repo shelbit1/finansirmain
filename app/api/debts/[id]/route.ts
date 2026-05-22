@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { getUserIdOrUnauthorized, handleZod, jsonError, readJson } from "@/lib/api";
+import { getPaidUserIdOrForbidden, handleZod, jsonError, readJson } from "@/lib/api";
 import { debtSchema } from "@/lib/validators";
 import { recalcDebt } from "@/lib/debtRepo";
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const auth = await getUserIdOrUnauthorized();
+  const auth = await getPaidUserIdOrForbidden();
   if ("response" in auth) return auth.response;
   const { id } = await ctx.params;
 
@@ -41,7 +41,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
 }
 
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const auth = await getUserIdOrUnauthorized();
+  const auth = await getPaidUserIdOrForbidden();
   if ("response" in auth) return auth.response;
   const { id } = await ctx.params;
 

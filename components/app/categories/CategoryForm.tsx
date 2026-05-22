@@ -8,23 +8,38 @@ export type CategoryDto = {
   name: string;
   icon: string | null;
   color: string | null;
+  parentId: string | null;
 };
+
+type ParentOption = { id: string; name: string };
 
 export function CategoryForm({
   kind,
   category,
+  parents = [],
+  defaultParentId,
   onSuccess,
 }: {
   kind: "income" | "expense";
   category?: CategoryDto;
+  /** Доступные родители — только корневые категории того же типа. */
+  parents?: ParentOption[];
+  /** Предзаполнить родителя (например, при «Создать подкатегорию»). */
+  defaultParentId?: string | null;
   onSuccess: () => void;
 }) {
   const isEdit = Boolean(category);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [parentId, setParentId] = useState<string>(
+    category?.parentId ?? defaultParentId ?? "",
+  );
 
   const defaultEmoji = kind === "income" ? "💰" : "🛒";
   const defaultColor = kind === "income" ? "#22C55E" : "#EF4444";
+
+  // В редактировании скрываем саму себя из списка возможных родителей.
+  const availableParents = parents.filter((p) => p.id !== category?.id);
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -36,6 +51,7 @@ export function CategoryForm({
       name: String(fd.get("name") ?? ""),
       icon: String(fd.get("icon") ?? defaultEmoji),
       color: String(fd.get("color") ?? defaultColor),
+      parentId: parentId || null,
     };
 
     try {
@@ -73,6 +89,24 @@ export function CategoryForm({
           autoFocus
         />
       </div>
+
+      {availableParents.length > 0 && (
+        <div>
+          <label className="label">Группа</label>
+          <select
+            value={parentId}
+            onChange={(e) => setParentId(e.target.value)}
+            className="input"
+          >
+            <option value="">Без группы (корневая)</option>
+            {availableParents.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div>
         <label className="label">Иконка</label>

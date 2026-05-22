@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import type { AssetType } from "@prisma/client";
-import { ASSET_TYPE_LIST } from "@/lib/assetTypes";
+import { ASSET_CATEGORIES, assetCategory } from "@/lib/assetTypes";
 import { cn, toInputDate } from "@/lib/utils";
 
 export type AssetDto = {
@@ -26,7 +26,9 @@ export function AssetForm({
   onSuccess: () => void;
 }) {
   const isEdit = Boolean(asset);
-  const [type, setType] = useState<AssetType>(asset?.type ?? "REAL_ESTATE");
+  // Сводим устаревшие типы из БД (BUSINESS/STOCKS/…) к одной из трёх категорий
+  const initialType: AssetType = asset ? assetCategory(asset.type) : "REAL_ESTATE";
+  const [type, setType] = useState<AssetType>(initialType);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -72,21 +74,20 @@ export function AssetForm({
     <form onSubmit={onSubmit} className="space-y-4">
       <div>
         <label className="label">Тип актива</label>
-        <div className="grid grid-cols-4 gap-1.5">
-          {ASSET_TYPE_LIST.map(([key, info]) => (
+        <div className="grid grid-cols-3 gap-1.5">
+          {ASSET_CATEGORIES.map((c) => (
             <button
               type="button"
-              key={key}
-              onClick={() => setType(key)}
+              key={c.id}
+              onClick={() => setType(c.id)}
               className={cn(
-                "flex flex-col items-center gap-1 p-2 rounded-lg border text-xs",
-                type === key
-                  ? "border-primary bg-primary/10"
-                  : "border-border bg-bg",
+                "px-3 py-2.5 rounded-lg border text-sm font-medium",
+                type === c.id
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-bg text-text-muted hover:text-text",
               )}
             >
-              <span className="text-lg">{info.emoji}</span>
-              <span className="leading-tight text-center">{info.label}</span>
+              {c.label}
             </button>
           ))}
         </div>

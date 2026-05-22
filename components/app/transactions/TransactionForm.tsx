@@ -10,7 +10,9 @@ import {
   isDebtType,
   type DebtType,
 } from "@/lib/transactionMeta";
-import { ASSET_TYPE_LIST } from "@/lib/assetTypes";
+import { ASSET_CATEGORIES } from "@/lib/assetTypes";
+import { hasPaidAccess, type AccessTier } from "@/lib/access";
+import { CategoryCombobox } from "@/components/ui/CategoryCombobox";
 
 /** Ширина модалки с формой операции — все 5 вкладок помещаются в одну строку */
 export const TRANSACTION_MODAL_MAX_WIDTH = "max-w-2xl";
@@ -34,7 +36,12 @@ export type TransactionDto = {
 };
 
 export type AccountOption = { id: string; name: string; icon: string | null };
-export type CategoryOption = { id: string; name: string; icon: string | null };
+export type CategoryOption = {
+  id: string;
+  name: string;
+  icon: string | null;
+  parentId: string | null;
+};
 export type DebtOption = {
   id: string;
   direction: DebtDirection;
@@ -46,12 +53,12 @@ export type DebtOption = {
 
 type TopTab = "INCOME" | "EXPENSE" | "TRANSFER" | "DEBT" | "ASSET_BUY";
 
-const TOP_TABS: { id: TopTab; label: string; color: string }[] = [
+const TOP_TABS: { id: TopTab; label: string; color: string; paid?: boolean }[] = [
   { id: "INCOME", label: "Доход", color: "var(--color-income)" },
   { id: "EXPENSE", label: "Расход", color: "var(--color-expense)" },
   { id: "TRANSFER", label: "Перемещение", color: "var(--color-transfer)" },
-  { id: "DEBT", label: "Долг", color: "var(--color-debt-owe)" },
-  { id: "ASSET_BUY", label: "Актив", color: "var(--color-asset)" },
+  { id: "DEBT", label: "Долг", color: "var(--color-debt-owe)", paid: true },
+  { id: "ASSET_BUY", label: "Актив", color: "var(--color-asset)", paid: true },
 ];
 
 function topTabForType(t: TransactionType): TopTab {
@@ -69,6 +76,7 @@ export function TransactionForm({
   expenseCategories,
   debts,
   personNames = [],
+  tier = "PAID",
   onSuccess,
 }: {
   transaction?: TransactionDto;
@@ -77,9 +85,20 @@ export function TransactionForm({
   expenseCategories: CategoryOption[];
   debts: DebtOption[];
   personNames?: string[];
+  tier?: AccessTier;
   onSuccess: () => void;
 }) {
   const isEdit = Boolean(transaction);
+  const paid = hasPaidAccess(tier);
+
+  // На бесплатном тарифе скрываем платные вкладки.
+  // Для редактирования существующей платной операции — оставляем её вкладку видимой,
+  // чтобы пользователь мог её отредактировать или удалить.
+  const editingPaidTab =
+    isEdit && transaction ? topTabForType(transaction.type) : null;
+  const visibleTopTabs = TOP_TABS.filter(
+    (t) => paid || !t.paid || t.id === editingPaidTab,
+  );
 
   const [tab, setTab] = useState<TopTab>(
     transaction ? topTabForType(transaction.type) : "EXPENSE",
@@ -183,7 +202,7 @@ export function TransactionForm({
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="flex gap-1.5 p-1.5 bg-bg border border-border rounded-xl w-full">
-        {TOP_TABS.map((t) => (
+        {visibleTopTabs.map((t) => (
           <button
             type="button"
             key={t.id}
@@ -200,6 +219,16 @@ export function TransactionForm({
           </button>
         ))}
       </div>
+
+      {!paid && (
+        <p className="text-xs text-text-muted -mt-2">
+          Операции «Долг» и «Актив» доступны в платной подписке.{" "}
+          <a href="/billing" className="text-primary font-medium hover:underline">
+            Оформить подписку
+          </a>
+          .
+        </p>
+      )}
 
       {tab === "DEBT" && (
         <div>
@@ -312,21 +341,20 @@ export function TransactionForm({
 
           <div>
             <label className="label">Тип актива</label>
-            <div className="grid grid-cols-4 gap-1.5">
-              {ASSET_TYPE_LIST.map(([key, info]) => (
+            <div className="grid grid-cols-3 gap-1.5">
+              {ASSET_CATEGORIES.map((c) => (
                 <button
                   type="button"
-                  key={key}
-                  onClick={() => setAssetType(key)}
+                  key={c.id}
+                  onClick={() => setAssetType(c.id)}
                   className={cn(
-                    "flex flex-col items-center gap-1 p-2 rounded-lg border text-xs",
-                    assetType === key
-                      ? "border-primary bg-primary/10"
-                      : "border-border bg-bg",
+                    "px-3 py-2.5 rounded-lg border text-sm font-medium",
+                    assetType === c.id
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-bg text-text-muted hover:text-text",
                   )}
                 >
-                  <span className="text-lg">{info.emoji}</span>
-                  <span className="leading-tight text-center">{info.label}</span>
+                  {c.label}
                 </button>
               ))}
             </div>
@@ -452,38 +480,28 @@ export function TransactionForm({
       {effectiveType === "INCOME" && (
         <div>
           <label className="label">Статья дохода</label>
-          <select
+          <CategoryCombobox
             name="incomeCategoryId"
+            kind="income"
             required
             defaultValue={transaction?.incomeCategoryId ?? ""}
-            className="input"
-          >
-            <option value="">Выберите статью</option>
-            {incomeCategories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.icon ?? ""} {c.name}
-              </option>
-            ))}
-          </select>
+            options={incomeCategories}
+            placeholder="Выберите или начните вводить"
+          />
         </div>
       )}
 
       {effectiveType === "EXPENSE" && (
         <div>
           <label className="label">Статья расхода</label>
-          <select
+          <CategoryCombobox
             name="expenseCategoryId"
+            kind="expense"
             required
             defaultValue={transaction?.expenseCategoryId ?? ""}
-            className="input"
-          >
-            <option value="">Выберите статью</option>
-            {expenseCategories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.icon ?? ""} {c.name}
-              </option>
-            ))}
-          </select>
+            options={expenseCategories}
+            placeholder="Выберите или начните вводить"
+          />
         </div>
       )}
 

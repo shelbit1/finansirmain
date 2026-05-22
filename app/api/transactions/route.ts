@@ -4,6 +4,11 @@ import { prisma } from "@/lib/db";
 import { getUserIdOrUnauthorized, handleZod, jsonError, readJson } from "@/lib/api";
 import { transactionSchema, transactionTypeSchema } from "@/lib/validators";
 import { createTransaction } from "@/lib/transactionRepo";
+import {
+  describeSubscription,
+  ensureTrialSubscription,
+} from "@/lib/billing";
+import { getAccessTier, hasPaidAccess, isPaidTxType } from "@/lib/access";
 
 export async function GET(req: Request) {
   const auth = await getUserIdOrUnauthorized();
@@ -65,6 +70,20 @@ export async function POST(req: Request) {
   try {
     const body = await readJson(req);
     const data = transactionSchema.parse(body);
+
+    if (isPaidTxType(data.type)) {
+      let sub = await prisma.subscription.findUnique({
+        where: { userId: auth.userId },
+      });
+      if (!sub) sub = await ensureTrialSubscription(auth.userId);
+      if (!hasPaidAccess(getAccessTier(describeSubscription(sub)))) {
+        return jsonError(
+          "Операции по долгам и активам доступны только в платной подписке.",
+          402,
+        );
+      }
+    }
+
     const tx = await createTransaction({
       userId: auth.userId,
       type: data.type,

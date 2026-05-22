@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { decimalToNumber } from "@/lib/utils";
-import { ASSET_TYPES } from "@/lib/assetTypes";
+import { assetTypeLabel } from "@/lib/assetTypes";
 import type {
   AssetBreakdownItem,
   BalanceHistoryResponse,
@@ -143,15 +143,11 @@ export async function computeBalanceHistory(
     assetsByType.set(a.type, existing);
   }
   const assetsBreakdown: AssetBreakdownItem[] = Array.from(assetsByType.entries())
-    .map(([type, data]) => {
-      const meta = ASSET_TYPES[type];
-      return {
-        type,
-        label: meta.label,
-        emoji: meta.emoji,
-        ...data,
-      };
-    })
+    .map(([type, data]) => ({
+      type,
+      label: assetTypeLabel(type),
+      ...data,
+    }))
     .sort((a, b) => b.totalValue - a.totalValue);
 
   const receivablesDetail = activeReceivables.map(detail);

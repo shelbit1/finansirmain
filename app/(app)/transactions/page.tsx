@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { requireActiveSubscription } from "@/lib/dal";
+import { getCurrentAccess } from "@/lib/dal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
   AddTransactionButton,
@@ -12,7 +12,7 @@ import { decimalToNumber } from "@/lib/utils";
 export const metadata = { title: "Операции — Финансыр" };
 
 export default async function TransactionsPage() {
-  const userId = await requireActiveSubscription();
+  const { userId, tier } = await getCurrentAccess();
 
   const [items, accounts, incomeCategories, expenseCategories, openDebts, allDebtPeople] =
     await Promise.all([
@@ -21,8 +21,8 @@ export default async function TransactionsPage() {
         orderBy: [{ date: "desc" }, { createdAt: "desc" }],
         take: 200,
         include: {
-          incomeCategory: { select: { id: true, name: true, icon: true, color: true } },
-          expenseCategory: { select: { id: true, name: true, icon: true, color: true } },
+          incomeCategory: { select: { id: true, name: true, icon: true, color: true, parentId: true } },
+          expenseCategory: { select: { id: true, name: true, icon: true, color: true, parentId: true } },
           fromAccount: { select: { id: true, name: true, icon: true, color: true, currency: true } },
           toAccount: { select: { id: true, name: true, icon: true, color: true, currency: true } },
           derived: { select: { amount: true } },
@@ -37,13 +37,13 @@ export default async function TransactionsPage() {
       }),
       prisma.incomeCategory.findMany({
         where: { userId },
-        orderBy: { createdAt: "asc" },
-        select: { id: true, name: true, icon: true },
+        orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+        select: { id: true, name: true, icon: true, parentId: true },
       }),
       prisma.expenseCategory.findMany({
         where: { userId },
-        orderBy: { createdAt: "asc" },
-        select: { id: true, name: true, icon: true },
+        orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+        select: { id: true, name: true, icon: true, parentId: true },
       }),
       prisma.debt.findMany({
         where: { userId, status: { not: "CLOSED" } },
@@ -112,6 +112,7 @@ export default async function TransactionsPage() {
             expenseCategories={expenseCategories}
             debts={debtOptions}
             personNames={personNames}
+            tier={tier}
           />
         }
       />
@@ -122,6 +123,7 @@ export default async function TransactionsPage() {
         expenseCategories={expenseCategories}
         debts={debtOptions}
         personNames={personNames}
+        tier={tier}
       />
     </>
   );

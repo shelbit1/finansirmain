@@ -2,6 +2,12 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { readSession } from "@/lib/session";
+import { prisma } from "@/lib/db";
+import {
+  describeSubscription,
+  ensureTrialSubscription,
+} from "@/lib/billing";
+import { getAccessTier, hasPaidAccess } from "@/lib/access";
 
 export async function getUserIdOrUnauthorized(): Promise<
   { userId: string } | { response: NextResponse }
@@ -13,6 +19,35 @@ export async function getUserIdOrUnauthorized(): Promise<
     };
   }
   return { userId: session.userId };
+}
+
+/**
+ * Гард для API эндпоинтов платных фич (долги, активы, баланс и т. п.).
+ * Возвращает userId, либо `response` 401 (не авторизован) / 402 (бесплатный тариф).
+ */
+export async function getPaidUserIdOrForbidden(): Promise<
+  { userId: string } | { response: NextResponse }
+> {
+  const auth = await getUserIdOrUnauthorized();
+  if ("response" in auth) return auth;
+
+  let sub = await prisma.subscription.findUnique({
+    where: { userId: auth.userId },
+  });
+  if (!sub) sub = await ensureTrialSubscription(auth.userId);
+  const view = describeSubscription(sub);
+  if (!hasPaidAccess(getAccessTier(view))) {
+    return {
+      response: NextResponse.json(
+        {
+          error:
+            "Эта функция доступна только в платной подписке. Оформите подписку, чтобы продолжить.",
+        },
+        { status: 402 },
+      ),
+    };
+  }
+  return { userId: auth.userId };
 }
 
 export function jsonError(message: string, status = 400): NextResponse {

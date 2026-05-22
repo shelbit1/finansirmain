@@ -25,7 +25,6 @@ export type AccountBreakdown = {
 export type AssetBreakdownItem = {
   type: AssetType;
   label: string;
-  emoji: string;
   totalValue: number;
   totalCost: number;
   count: number;

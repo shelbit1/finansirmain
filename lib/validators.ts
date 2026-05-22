@@ -50,6 +50,12 @@ export const categorySchema = z.object({
   name: z.string().trim().min(1, "Введите название").max(60),
   icon: optionalString,
   color: optionalString,
+  parentId: z
+    .string()
+    .trim()
+    .nullable()
+    .optional()
+    .transform((v) => (v && v.length > 0 ? v : null)),
 });
 
 export const assetTypeSchema = z.enum([

@@ -10,6 +10,7 @@ import {
   countTransactionsForCategory,
   isCategoryKind,
   repoFor,
+  validateParent,
 } from "@/lib/categoryRepo";
 
 export async function PATCH(
@@ -31,6 +32,12 @@ export async function PATCH(
   try {
     const body = await readJson(req);
     const data = categorySchema.partial().parse(body);
+
+    if (data.parentId) {
+      const check = await validateParent(kind, auth.userId, data.parentId, id);
+      if (!check.ok) return jsonError(check.error, check.status);
+    }
+
     const category = await repo.update({ where: { id }, data });
     return NextResponse.json({ category });
   } catch (e) {
@@ -64,6 +71,7 @@ export async function DELETE(
     );
   }
 
+  // Дочерние категории «всплывают» наверх автоматически (onDelete: SetNull)
   await repo.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

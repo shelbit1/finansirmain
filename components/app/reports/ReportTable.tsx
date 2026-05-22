@@ -249,25 +249,89 @@ function SectionRows({
   );
 }
 
-function CategoryRow({ row, periodCount }: { row: ReportRow; periodCount: number }) {
+function CategoryRow({
+  row,
+  periodCount,
+  depth = 0,
+}: {
+  row: ReportRow;
+  periodCount: number;
+  depth?: number;
+}) {
+  const hasChildren = (row.children?.length ?? 0) > 0;
+  const [open, setOpen] = useState(false);
+  const isParent = depth === 0 && hasChildren;
+  // Базовый отступ для категории = 12 (как было), для подкатегорий — +6.
+  const padLeftPx = depth === 0 ? 48 : 80;
+
   return (
-    <tr className="border-b border-border hover:bg-bg/40">
-      <td className="sticky left-0 z-10 bg-surface hover:bg-bg/40 pl-12 pr-4 py-2">
-        <span className="inline-flex items-center gap-2">
-          {row.icon && <span className="text-base shrink-0">{row.icon}</span>}
-          <span className="truncate">{row.name}</span>
-        </span>
-      </td>
-      <td className="px-4 py-2 text-right font-medium tnum whitespace-nowrap bg-bg/40">
-        {fmt(row.total)}
-      </td>
-      {row.byPeriod.map((v, i) => (
-        <td key={i} className="px-3 py-2 text-right tnum whitespace-nowrap text-text-muted">
-          {fmt(v)}
+    <>
+      <tr
+        className={cn(
+          "border-b border-border",
+          isParent
+            ? "bg-surface hover:bg-bg/30 cursor-pointer"
+            : "hover:bg-bg/40",
+        )}
+        onClick={isParent ? () => setOpen((v) => !v) : undefined}
+      >
+        <td
+          className="sticky left-0 z-10 bg-surface hover:bg-bg/40 pr-4 py-2"
+          style={{ paddingLeft: padLeftPx }}
+        >
+          <span className="inline-flex items-center gap-2 min-w-0">
+            {hasChildren ? (
+              <ChevronDown
+                className={cn(
+                  "w-3.5 h-3.5 text-text-muted transition-transform shrink-0",
+                  !open && "-rotate-90",
+                )}
+              />
+            ) : (
+              <span className="w-3.5 shrink-0" aria-hidden />
+            )}
+            {row.icon && <span className="text-base shrink-0">{row.icon}</span>}
+            <span
+              className={cn("truncate", isParent && "font-semibold")}
+            >
+              {row.name}
+            </span>
+          </span>
         </td>
-      ))}
-      {/* periodCount used to keep types stable */}
-      <td hidden aria-hidden>{periodCount}</td>
-    </tr>
+        <td
+          className={cn(
+            "px-4 py-2 text-right tnum whitespace-nowrap bg-bg/40",
+            isParent ? "font-semibold" : "font-medium",
+          )}
+        >
+          {fmt(row.total)}
+        </td>
+        {row.byPeriod.map((v, i) => (
+          <td
+            key={i}
+            className={cn(
+              "px-3 py-2 text-right tnum whitespace-nowrap",
+              isParent ? "font-medium" : "text-text-muted",
+            )}
+          >
+            {fmt(v)}
+          </td>
+        ))}
+        <td hidden aria-hidden>
+          {periodCount}
+        </td>
+      </tr>
+
+      {hasChildren &&
+        open &&
+        row.children!.map((child) => (
+          <CategoryRow
+            key={child.id}
+            row={child}
+            periodCount={periodCount}
+            depth={depth + 1}
+          />
+        ))}
+    </>
   );
 }

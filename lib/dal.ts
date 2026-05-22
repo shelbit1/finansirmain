@@ -3,7 +3,17 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { readSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
-import { describeSubscription, ensureTrialSubscription } from "@/lib/billing";
+import {
+  describeSubscription,
+  ensureTrialSubscription,
+  type SubscriptionView,
+} from "@/lib/billing";
+import {
+  getAccessTier,
+  hasPaidAccess,
+  type AccessTier,
+  type PaidFeature,
+} from "@/lib/access";
 
 export const getSession = cache(async () => {
   return readSession();
@@ -32,18 +42,42 @@ export const requireUser = cache(async () => {
   return user;
 });
 
+export type CurrentAccess = {
+  userId: string;
+  tier: AccessTier;
+  view: SubscriptionView;
+};
+
 /**
- * Возвращает userId, если подписка пользователя активна (триал или оплачено).
- * Иначе редиректит на /billing.
+ * Возвращает доступ для текущего пользователя. Если пользователь не авторизован —
+ * редиректит на /login. НЕ редиректит при истечении подписки —
+ * это делает `requirePaidFeature`.
  */
-export const requireActiveSubscription = cache(async (): Promise<string> => {
+export const getCurrentAccess = cache(async (): Promise<CurrentAccess> => {
   const userId = await requireUserId();
   let sub = await prisma.subscription.findUnique({ where: { userId } });
-  if (!sub) {
-    // На случай старых пользователей без подписки — создаём триал.
-    sub = await ensureTrialSubscription(userId);
-  }
+  if (!sub) sub = await ensureTrialSubscription(userId);
   const view = describeSubscription(sub);
-  if (view.expired) redirect("/billing");
-  return userId;
+  return { userId, tier: getAccessTier(view), view };
 });
+
+/**
+ * Возвращает userId, если у пользователя есть платный доступ
+ * (триал или оплачено). Иначе редиректит free-пользователя на /billing.
+ *
+ * Используется на страницах платных фич: /debts, /assets, /balance, /plans.
+ * Для страниц, доступных и в бесплатном тарифе, используйте `getCurrentAccess`.
+ */
+export const requireActiveSubscription = cache(async (): Promise<string> => {
+  const access = await getCurrentAccess();
+  if (!hasPaidAccess(access.tier)) redirect("/billing");
+  return access.userId;
+});
+
+/**
+ * Гард для страниц с платной фичей. Редиректит free-пользователя на /billing.
+ * Возвращает userId, если доступ есть.
+ */
+export async function requirePaidFeature(_feature: PaidFeature): Promise<string> {
+  return requireActiveSubscription();
+}

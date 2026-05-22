@@ -120,13 +120,18 @@ model IncomeCategory {
   name      String
   icon      String?
   color     String?
+  parentId  String?
+  position  Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent       IncomeCategory?  @relation("IncomeCategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children     IncomeCategory[] @relation("IncomeCategoryTree")
   transactions Transaction[]
 
   @@index([userId])
+  @@index([parentId])
 }
 
 model ExpenseCategory {
@@ -135,13 +140,18 @@ model ExpenseCategory {
   name      String
   icon      String?
   color     String?
+  parentId  String?
+  position  Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent       ExpenseCategory?  @relation("ExpenseCategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children     ExpenseCategory[] @relation("ExpenseCategoryTree")
   transactions Transaction[]
 
   @@index([userId])
+  @@index([parentId])
 }
 
 // ─── ОПЕРАЦИИ ────────────────────────────────────────────────────────────────
