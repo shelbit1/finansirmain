@@ -10,38 +10,47 @@ import {
 import { ChevronDown, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type CategoryComboboxItem = {
+export type ComboboxItem = {
   id: string;
   name: string;
   icon: string | null;
-  parentId: string | null;
+  /** Опционально: id родителя для построения иерархии в выпадашке. */
+  parentId?: string | null;
 };
 
-type Kind = "income" | "expense";
-
 /**
- * Поиск по статьям с иерархией (родитель → дочерние с отступом) и
- * возможностью создать новую статью прямо из поля.
+ * Универсальный селект с поиском и опциональным inline-созданием новой опции.
  *
- * Сабмит формы происходит через скрытый input с заданным `name`.
+ * - Если у элементов задан `parentId`, дочерние строки отрисовываются с
+ *   отступом и приглушённым цветом.
+ * - Если передан `onCreate`, при отсутствии точного совпадения в верх
+ *   выпадашки добавляется строка «Создать <query>». По её выбору (клик или
+ *   Enter, когда она подсвечена) вызывается `onCreate(query)`. Колбэк должен
+ *   вернуть созданный элемент; он немедленно добавится в список и выберется.
+ *
+ * Значение сабмитится в форму через скрытый `<input name=…>`.
  */
-export function CategoryCombobox({
+export function Combobox({
   name,
   defaultValue = "",
   options,
-  kind,
-  placeholder = "Выберите статью",
+  placeholder = "Выберите",
+  emptyText = "Ничего не найдено",
   required = false,
+  onCreate,
+  createLabel = (q) => `Создать «${q}»`,
 }: {
   name: string;
   defaultValue?: string;
-  options: CategoryComboboxItem[];
-  kind: Kind;
+  options: ComboboxItem[];
   placeholder?: string;
+  emptyText?: string;
   required?: boolean;
+  onCreate?: (query: string) => Promise<ComboboxItem>;
+  createLabel?: (query: string) => string;
 }) {
   const [value, setValue] = useState<string>(defaultValue);
-  const [items, setItems] = useState<CategoryComboboxItem[]>(options);
+  const [items, setItems] = useState<ComboboxItem[]>(options);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
@@ -67,10 +76,14 @@ export function CategoryCombobox({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Дерево: сначала корневые, под каждым — её дочерние (отступ depth=1).
+  /** Плоский упорядоченный список с указанием глубины для отступа. */
   const ordered = useMemo(() => {
-    const byParent = new Map<string, CategoryComboboxItem[]>();
-    const roots: CategoryComboboxItem[] = [];
+    const hasHierarchy = items.some((i) => i.parentId);
+    if (!hasHierarchy) {
+      return items.map((it) => ({ item: it, depth: 0 }));
+    }
+    const byParent = new Map<string, ComboboxItem[]>();
+    const roots: ComboboxItem[] = [];
     const idSet = new Set(items.map((i) => i.id));
     for (const it of items) {
       if (it.parentId && idSet.has(it.parentId)) {
@@ -81,7 +94,7 @@ export function CategoryCombobox({
         roots.push(it);
       }
     }
-    const out: { item: CategoryComboboxItem; depth: number }[] = [];
+    const out: { item: ComboboxItem; depth: number }[] = [];
     for (const r of roots) {
       out.push({ item: r, depth: 0 });
       for (const k of byParent.get(r.id) ?? []) {
@@ -101,7 +114,7 @@ export function CategoryCombobox({
   const exactMatch = filtered.some(
     ({ item }) => item.name.toLowerCase() === ql,
   );
-  const canCreate = q.length > 0 && !exactMatch;
+  const canCreate = Boolean(onCreate) && q.length > 0 && !exactMatch;
 
   const selected = items.find((it) => it.id === value);
 
@@ -124,34 +137,11 @@ export function CategoryCombobox({
   };
 
   const create = async () => {
-    const trimmed = q;
-    if (!trimmed || creating) return;
+    if (!onCreate || !q || creating) return;
     setCreating(true);
     setCreateError(null);
     try {
-      const res = await fetch(`/api/categories/${kind}`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name: trimmed }),
-      });
-      if (!res.ok) {
-        const j = (await res.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(j?.error ?? "Не удалось создать статью");
-      }
-      const data = (await res.json()) as {
-        category: {
-          id: string;
-          name: string;
-          icon: string | null;
-          parentId: string | null;
-        };
-      };
-      const created: CategoryComboboxItem = {
-        id: data.category.id,
-        name: data.category.name,
-        icon: data.category.icon ?? null,
-        parentId: data.category.parentId ?? null,
-      };
+      const created = await onCreate(q);
       setItems((prev) => [...prev, created]);
       setValue(created.id);
       closeAndReset();
@@ -269,7 +259,7 @@ export function CategoryCombobox({
             >
               <span className="inline-flex items-center gap-2 text-primary font-medium">
                 <Plus className="w-3.5 h-3.5" />
-                {creating ? "Создаём…" : `Создать «${q}»`}
+                {creating ? "Создаём…" : createLabel(q)}
               </span>
               <span className="text-xs text-text-muted">Enter</span>
             </button>
@@ -283,7 +273,7 @@ export function CategoryCombobox({
 
           {filtered.length === 0 && !canCreate && (
             <div className="px-3 py-2 text-sm text-text-muted italic">
-              Ничего не найдено
+              {emptyText}
             </div>
           )}
 

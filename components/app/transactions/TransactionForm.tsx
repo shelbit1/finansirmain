@@ -12,7 +12,7 @@ import {
 } from "@/lib/transactionMeta";
 import { ASSET_CATEGORIES } from "@/lib/assetTypes";
 import { hasPaidAccess, type AccessTier } from "@/lib/access";
-import { CategoryCombobox } from "@/components/ui/CategoryCombobox";
+import { Combobox, type ComboboxItem } from "@/components/ui/Combobox";
 
 /** Ширина модалки с формой операции — все 5 вкладок помещаются в одну строку */
 export const TRANSACTION_MODAL_MAX_WIDTH = "max-w-2xl";
@@ -67,6 +67,50 @@ function topTabForType(t: TransactionType): TopTab {
   if (t === "TRANSFER") return "TRANSFER";
   if (t === "ASSET_BUY") return "ASSET_BUY";
   return "EXPENSE";
+}
+
+async function createCategory(
+  kind: "income" | "expense",
+  name: string,
+): Promise<ComboboxItem> {
+  const res = await fetch(`/api/categories/${kind}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) {
+    const j = (await res.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(j?.error ?? "Не удалось создать статью");
+  }
+  const data = (await res.json()) as {
+    category: { id: string; name: string; icon: string | null; parentId: string | null };
+  };
+  return {
+    id: data.category.id,
+    name: data.category.name,
+    icon: data.category.icon ?? null,
+    parentId: data.category.parentId ?? null,
+  };
+}
+
+async function createAccount(name: string): Promise<ComboboxItem> {
+  const res = await fetch("/api/accounts", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) {
+    const j = (await res.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(j?.error ?? "Не удалось создать счёт");
+  }
+  const data = (await res.json()) as {
+    account: { id: string; name: string; icon: string | null };
+  };
+  return {
+    id: data.account.id,
+    name: data.account.name,
+    icon: data.account.icon ?? null,
+  };
 }
 
 export function TransactionForm({
@@ -440,19 +484,15 @@ export function TransactionForm({
               ? "Счёт оплаты"
               : "Счёт списания"}
           </label>
-          <select
+          <Combobox
             name="fromAccountId"
             required
             defaultValue={transaction?.fromAccountId ?? ""}
-            className="input"
-          >
-            <option value="">Выберите счёт</option>
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.icon ?? ""} {a.name}
-              </option>
-            ))}
-          </select>
+            options={accounts}
+            placeholder="Выберите или начните вводить"
+            onCreate={createAccount}
+            createLabel={(q) => `Создать счёт «${q}»`}
+          />
         </div>
       )}
 
@@ -461,32 +501,28 @@ export function TransactionForm({
           <label className="label">
             {effectiveType === "TRANSFER" ? "Куда" : "Счёт зачисления"}
           </label>
-          <select
+          <Combobox
             name="toAccountId"
             required
             defaultValue={transaction?.toAccountId ?? ""}
-            className="input"
-          >
-            <option value="">Выберите счёт</option>
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.icon ?? ""} {a.name}
-              </option>
-            ))}
-          </select>
+            options={accounts}
+            placeholder="Выберите или начните вводить"
+            onCreate={createAccount}
+            createLabel={(q) => `Создать счёт «${q}»`}
+          />
         </div>
       )}
 
       {effectiveType === "INCOME" && (
         <div>
           <label className="label">Статья дохода</label>
-          <CategoryCombobox
+          <Combobox
             name="incomeCategoryId"
-            kind="income"
             required
             defaultValue={transaction?.incomeCategoryId ?? ""}
             options={incomeCategories}
             placeholder="Выберите или начните вводить"
+            onCreate={(q) => createCategory("income", q)}
           />
         </div>
       )}
@@ -494,13 +530,13 @@ export function TransactionForm({
       {effectiveType === "EXPENSE" && (
         <div>
           <label className="label">Статья расхода</label>
-          <CategoryCombobox
+          <Combobox
             name="expenseCategoryId"
-            kind="expense"
             required
             defaultValue={transaction?.expenseCategoryId ?? ""}
             options={expenseCategories}
             placeholder="Выберите или начните вводить"
+            onCreate={(q) => createCategory("expense", q)}
           />
         </div>
       )}
