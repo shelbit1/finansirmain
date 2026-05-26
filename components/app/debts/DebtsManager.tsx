@@ -10,6 +10,7 @@ import {
   ChevronDown,
   Coins,
   AlertCircle,
+  Merge,
 } from "lucide-react";
 import type { DebtDirection, DebtStatus } from "@prisma/client";
 import { Modal } from "@/components/ui/Modal";
@@ -39,7 +40,13 @@ const STATUS_LABEL: Record<DebtStatus, string> = {
   CLOSED: "Закрыт",
 };
 
-export function DebtsManager({ debts }: { debts: DebtWithPayments[] }) {
+export function DebtsManager({
+  debts,
+  duplicateGroups = 0,
+}: {
+  debts: DebtWithPayments[];
+  duplicateGroups?: number;
+}) {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("ALL");
   const [creating, setCreating] = useState(false);
@@ -48,6 +55,8 @@ export function DebtsManager({ debts }: { debts: DebtWithPayments[] }) {
   const [deleting, setDeleting] = useState<DebtWithPayments | null>(null);
   const [deletePending, setDeletePending] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [mergePending, setMergePending] = useState(false);
+  const [mergeError, setMergeError] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     if (filter === "ALL") return debts.filter((d) => d.status !== "CLOSED");
@@ -79,6 +88,23 @@ export function DebtsManager({ debts }: { debts: DebtWithPayments[] }) {
     router.refresh();
   };
 
+  const mergeDuplicates = async () => {
+    setMergePending(true);
+    setMergeError(null);
+    try {
+      const res = await fetch("/api/debts/merge-duplicates", { method: "POST" });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(j?.error ?? "Не удалось объединить долги");
+      }
+      router.refresh();
+    } catch (err) {
+      setMergeError((err as Error).message);
+    } finally {
+      setMergePending(false);
+    }
+  };
+
   if (debts.length === 0) {
     return (
       <>
@@ -101,6 +127,32 @@ export function DebtsManager({ debts }: { debts: DebtWithPayments[] }) {
 
   return (
     <>
+      {duplicateGroups > 0 && (
+        <div className="mb-4 rounded-xl border border-primary/30 bg-primary/8 p-3 sm:p-4 flex flex-wrap items-center gap-3">
+          <Merge className="w-4 h-4 text-primary shrink-0" />
+          <div className="flex-1 min-w-0 text-sm">
+            <p className="font-medium">
+              Найдены повторяющиеся долги ({duplicateGroups}{" "}
+              {duplicateGroups === 1 ? "группа" : "групп"})
+            </p>
+            <p className="text-text-muted text-xs sm:text-sm">
+              Можно объединить записи с одинаковым именем и направлением в одну —
+              суммы и платежи сохранятся.
+            </p>
+            {mergeError && (
+              <p className="text-expense text-xs mt-1">{mergeError}</p>
+            )}
+          </div>
+          <button
+            onClick={mergeDuplicates}
+            disabled={mergePending}
+            className="btn btn-primary h-9 px-3 text-sm shrink-0"
+          >
+            {mergePending ? "Объединяем…" : "Объединить"}
+          </button>
+        </div>
+      )}
+
       <ScrollableTabs className="mb-4">
         {(["ALL", "I_OWE", "OWED_TO_ME", "CLOSED"] as Filter[]).map((f) => (
           <button

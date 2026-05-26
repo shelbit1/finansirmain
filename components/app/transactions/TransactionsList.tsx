@@ -48,9 +48,38 @@ function matchesSearch(t: TransactionWithRefs, query: string): boolean {
   return haystack.includes(q);
 }
 
+/**
+ * Раскрывает выбранную категорию в множество её id вместе со всеми потомками.
+ * Это нужно, чтобы фильтрация по родительской категории включала операции
+ * подкатегорий.
+ */
+function expandCategoryFilter(
+  categoryId: string,
+  pools: CategoryOption[][],
+): Set<string> | null {
+  if (!categoryId) return null;
+  const result = new Set<string>([categoryId]);
+  for (const pool of pools) {
+    if (!pool.some((c) => c.id === categoryId)) continue;
+    const queue = [categoryId];
+    while (queue.length > 0) {
+      const id = queue.shift() as string;
+      for (const c of pool) {
+        if (c.parentId === id && !result.has(c.id)) {
+          result.add(c.id);
+          queue.push(c.id);
+        }
+      }
+    }
+    break;
+  }
+  return result;
+}
+
 function applyFilter(
   items: TransactionWithRefs[],
   filter: FilterState,
+  categoryIds: Set<string> | null,
 ): TransactionWithRefs[] {
   const min = filter.amountMin ? Number(filter.amountMin) : null;
   const max = filter.amountMax ? Number(filter.amountMax) : null;
@@ -62,6 +91,17 @@ function applyFilter(
     if (filter.date && toInputDate(t.date) !== filter.date) return false;
     if (min !== null && !Number.isNaN(min) && t.amount < min) return false;
     if (max !== null && !Number.isNaN(max) && t.amount > max) return false;
+    if (
+      filter.accountId &&
+      t.fromAccountId !== filter.accountId &&
+      t.toAccountId !== filter.accountId
+    ) {
+      return false;
+    }
+    if (categoryIds) {
+      const cat = t.incomeCategoryId ?? t.expenseCategoryId;
+      if (!cat || !categoryIds.has(cat)) return false;
+    }
     if (!matchesSearch(t, filter.search)) return false;
     return true;
   });
@@ -91,7 +131,13 @@ export function TransactionsList({
   const [deleting, setDeleting] = useState<TransactionWithRefs | null>(null);
   const [deletePending, setDeletePending] = useState(false);
 
-  const filtered = useMemo(() => applyFilter(items, filter), [items, filter]);
+  const filtered = useMemo(() => {
+    const categoryIds = expandCategoryFilter(filter.categoryId, [
+      expenseCategories,
+      incomeCategories,
+    ]);
+    return applyFilter(items, filter, categoryIds);
+  }, [items, filter, expenseCategories, incomeCategories]);
 
   const refresh = () => {
     setCreating(false);
@@ -146,7 +192,14 @@ export function TransactionsList({
 
   return (
     <>
-      <TransactionsFilters value={filter} onChange={setFilter} tier={tier} />
+      <TransactionsFilters
+        value={filter}
+        onChange={setFilter}
+        tier={tier}
+        accounts={accounts}
+        incomeCategories={incomeCategories}
+        expenseCategories={expenseCategories}
+      />
 
       {filtered.length === 0 ? (
         <div className="card p-8 text-center">

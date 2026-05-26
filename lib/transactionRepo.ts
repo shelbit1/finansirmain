@@ -1,7 +1,7 @@
 import "server-only";
 import { Prisma, type AssetType, type TransactionType } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { recalcDebt } from "@/lib/debtRepo";
+import { recalcDebt, syncDebtFromTransactions } from "@/lib/debtRepo";
 
 type AssetData = {
   name: string;
@@ -129,8 +129,16 @@ async function getOrCreateInterestCategoryId(
   return created.id;
 }
 
-/** Создаёт запись Debt для DEBT_TAKE/DEBT_GIVE. */
-async function createDebtForOperation(
+/**
+ * Возвращает Debt для операции DEBT_TAKE/DEBT_GIVE:
+ *   • если уже есть активный долг с тем же направлением, валютой и именем
+ *     (без учёта регистра/пробелов по краям) — увеличиваем `amount`;
+ *   • иначе создаём новый Debt.
+ *
+ * За счёт этого повторные займы у того же человека не дублируются, а
+ * суммируются в одной записи раздела «Долги».
+ */
+async function getOrCreateDebtForOperation(
   tx: Prisma.TransactionClient,
   userId: string,
   type: TransactionType,
@@ -140,12 +148,36 @@ async function createDebtForOperation(
   description: string | null,
 ) {
   const direction = type === "DEBT_TAKE" ? "I_OWE" : "OWED_TO_ME";
+  const currency = "RUB";
+  const trimmed = personName.trim();
+
+  const existing = await tx.debt.findFirst({
+    where: {
+      userId,
+      direction,
+      currency,
+      status: { not: "CLOSED" },
+      personName: { equals: trimmed, mode: "insensitive" },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+
+  if (existing) {
+    return tx.debt.update({
+      where: { id: existing.id },
+      data: {
+        amount: new Prisma.Decimal(existing.amount.toString()).add(amount),
+      },
+    });
+  }
+
   return tx.debt.create({
     data: {
       userId,
       direction,
-      personName,
+      personName: trimmed,
       amount,
+      currency,
       paidAmount: 0,
       status: "ACTIVE",
       dueDate: dueDate ?? null,
@@ -232,7 +264,7 @@ export async function createTransaction(input: CreateInput) {
       assetId = asset.id;
     } else if (input.type === "DEBT_TAKE" || input.type === "DEBT_GIVE") {
       if (!input.personName) throw new Error("Введите имя человека");
-      const debt = await createDebtForOperation(
+      const debt = await getOrCreateDebtForOperation(
         tx,
         input.userId,
         input.type,
@@ -429,11 +461,22 @@ export async function updateTransaction(
       });
       if (!debt) throw new Error("Связанный долг не найден");
 
+      // Пересчёт суммы долга по всем связанным операциям-источникам,
+      // чтобы поддержать сценарий «несколько операций → один долг».
+      const sources = await tx.transaction.findMany({
+        where: { debtId: old.debtId, type: { in: ["DEBT_TAKE", "DEBT_GIVE"] } },
+        select: { amount: true },
+      });
+      const totalAmount = sources.reduce(
+        (acc, t) => acc.add(t.amount),
+        new Prisma.Decimal(0),
+      );
+
       const paidSum = debt.payments.reduce(
         (acc, p) => acc.add(p.amount),
         new Prisma.Decimal(0),
       );
-      if (paidSum.greaterThan(updated.amount)) {
+      if (paidSum.greaterThan(totalAmount)) {
         throw new Error(
           "Сумма долга меньше уже учтённых возвратов — сначала удалите возвраты",
         );
@@ -441,7 +484,7 @@ export async function updateTransaction(
       await tx.debt.update({
         where: { id: old.debtId },
         data: {
-          amount: updated.amount,
+          amount: totalAmount,
           personName: input.personName ?? debt.personName,
         },
       });
@@ -572,24 +615,57 @@ export async function deleteTransaction(userId: string, id: string) {
       );
     }
 
-    // DEBT_TAKE / DEBT_GIVE — основа долга: запрет если есть выплаты
+    // DEBT_TAKE / DEBT_GIVE — операция-источник долга.
+    // Если у долга несколько источников (несколько TAKE/GIVE от одного лица
+    // объединены в одну запись), удаляется только текущая операция, а сумма
+    // долга пересчитывается по остальным.
     if (
       (old.type === "DEBT_TAKE" || old.type === "DEBT_GIVE") &&
       old.debtId &&
-      old.debt &&
-      old.debt.payments.length > 0
+      old.debt
     ) {
-      throw new Error(
-        "Нельзя удалить операцию: у этого долга есть возвраты. Сначала удалите их.",
-      );
-    }
+      const sourcesCount = await tx.transaction.count({
+        where: {
+          debtId: old.debtId,
+          type: { in: ["DEBT_TAKE", "DEBT_GIVE"] },
+        },
+      });
+      const isLastSource = sourcesCount <= 1;
 
-    // Удаляем основную транзакцию (derived удалится каскадом)
-    await tx.transaction.delete({ where: { id } });
+      if (isLastSource && old.debt.payments.length > 0) {
+        throw new Error(
+          "Нельзя удалить операцию: у этого долга есть возвраты. Сначала удалите их.",
+        );
+      }
 
-    // DEBT_TAKE/GIVE — удалить и сам Debt (нет выплат)
-    if ((old.type === "DEBT_TAKE" || old.type === "DEBT_GIVE") && old.debtId) {
-      await tx.debt.delete({ where: { id: old.debtId } });
+      await tx.transaction.delete({ where: { id } });
+
+      if (isLastSource) {
+        await tx.debt.delete({ where: { id: old.debtId } });
+      } else {
+        // Проверяем, что после удаления оставшейся суммы хватит на учтённые
+        // возвраты. Если нет — откатываем удаление через throw.
+        const remaining = await tx.transaction.aggregate({
+          where: {
+            debtId: old.debtId,
+            type: { in: ["DEBT_TAKE", "DEBT_GIVE"] },
+          },
+          _sum: { amount: true },
+        });
+        const remainingAmount = remaining._sum.amount ?? new Prisma.Decimal(0);
+        const paidSum = old.debt.payments.reduce(
+          (acc, p) => acc.add(p.amount),
+          new Prisma.Decimal(0),
+        );
+        if (paidSum.greaterThan(remainingAmount)) {
+          throw new Error(
+            "Нельзя удалить: оставшаяся сумма долга станет меньше учтённых возвратов.",
+          );
+        }
+        await syncDebtFromTransactions(tx, old.debtId);
+      }
+    } else {
+      await tx.transaction.delete({ where: { id } });
     }
 
     // DEBT_RETURN/RECEIVE — удалить связанный платёж и пересчитать статус

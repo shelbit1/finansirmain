@@ -66,10 +66,21 @@ export function todayString(): string {
   return `${y}-${m}-${day}`;
 }
 
+/**
+ * Возвращает дату в формате `YYYY-MM-DD` по локальному календарю.
+ * Используется для `<input type="date">` и для построения параметров URL
+ * (например, в фильтрах отчётов). Через `toISOString()` нельзя — это даст
+ * UTC-дату, что в часовых поясах с положительным смещением (например, МСК)
+ * сдвигает полуночные даты на сутки назад.
+ */
 export function toInputDate(date: Date | string | null | undefined): string {
   if (!date) return "";
   const d = typeof date === "string" ? new Date(date) : date;
-  return d.toISOString().slice(0, 10);
+  if (Number.isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 export function startOfMonth(d: Date = new Date()): Date {

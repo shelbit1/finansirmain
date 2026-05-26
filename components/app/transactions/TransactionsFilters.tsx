@@ -4,6 +4,10 @@ import { Calendar, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollableTabs } from "@/components/ui/ScrollableTabs";
 import { hasPaidAccess, type AccessTier } from "@/lib/access";
+import type {
+  AccountOption,
+  CategoryOption,
+} from "./TransactionForm";
 
 export type TransactionFilter =
   | "ALL"
@@ -28,6 +32,8 @@ export type FilterState = {
   date: string;
   amountMin: string;
   amountMax: string;
+  accountId: string;
+  categoryId: string;
 };
 
 export const EMPTY_FILTER: FilterState = {
@@ -36,6 +42,8 @@ export const EMPTY_FILTER: FilterState = {
   date: "",
   amountMin: "",
   amountMax: "",
+  accountId: "",
+  categoryId: "",
 };
 
 export function isFilterActive(f: FilterState): boolean {
@@ -44,23 +52,74 @@ export function isFilterActive(f: FilterState): boolean {
     f.search.trim() !== "" ||
     f.date !== "" ||
     f.amountMin !== "" ||
-    f.amountMax !== ""
+    f.amountMax !== "" ||
+    f.accountId !== "" ||
+    f.categoryId !== ""
   );
+}
+
+/**
+ * Сортировка категорий с учётом иерархии: каждая родительская идёт перед
+ * своими потомками, дочерние помечаются глубиной для визуального отступа.
+ */
+function orderedCategories(
+  categories: CategoryOption[],
+): { item: CategoryOption; depth: number }[] {
+  const idSet = new Set(categories.map((c) => c.id));
+  const byParent = new Map<string, CategoryOption[]>();
+  const roots: CategoryOption[] = [];
+  for (const c of categories) {
+    if (c.parentId && idSet.has(c.parentId)) {
+      const arr = byParent.get(c.parentId) ?? [];
+      arr.push(c);
+      byParent.set(c.parentId, arr);
+    } else {
+      roots.push(c);
+    }
+  }
+  const out: { item: CategoryOption; depth: number }[] = [];
+  for (const r of roots) {
+    out.push({ item: r, depth: 0 });
+    for (const k of byParent.get(r.id) ?? []) {
+      out.push({ item: k, depth: 1 });
+    }
+  }
+  return out;
 }
 
 export function TransactionsFilters({
   value,
   onChange,
   tier,
+  accounts,
+  incomeCategories,
+  expenseCategories,
 }: {
   value: FilterState;
   onChange: (next: FilterState) => void;
   tier: AccessTier;
+  accounts: AccountOption[];
+  incomeCategories: CategoryOption[];
+  expenseCategories: CategoryOption[];
 }) {
   const paid = hasPaidAccess(tier);
   const visibleTabs = FILTER_TABS.filter((t) => paid || !t.paid);
   const set = <K extends keyof FilterState>(key: K, v: FilterState[K]) =>
     onChange({ ...value, [key]: v });
+
+  const setType = (t: TransactionFilter) => {
+    // При смене типа сбрасываем категорию, если она больше не релевантна.
+    const next: FilterState = { ...value, type: t };
+    if (t !== "ALL" && t !== "INCOME" && t !== "EXPENSE") {
+      next.categoryId = "";
+    }
+    onChange(next);
+  };
+
+  const showCategoryFilter =
+    value.type === "ALL" || value.type === "INCOME" || value.type === "EXPENSE";
+  const orderedIncome = orderedCategories(incomeCategories);
+  const orderedExpense = orderedCategories(expenseCategories);
 
   return (
     <div className="space-y-3 mb-4">
@@ -68,7 +127,7 @@ export function TransactionsFilters({
         {visibleTabs.map((f) => (
           <button
             key={f.id}
-            onClick={() => set("type", f.id)}
+            onClick={() => setType(f.id)}
             className={cn(
               "px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap",
               value.type === f.id ? "bg-surface shadow-sm" : "text-text-muted",
@@ -140,6 +199,66 @@ export function TransactionsFilters({
             )}
           />
         </div>
+      </div>
+
+      <div
+        className={cn(
+          "grid gap-2",
+          showCategoryFilter ? "sm:grid-cols-2" : "sm:grid-cols-1",
+        )}
+      >
+        <select
+          value={value.accountId}
+          onChange={(e) => set("accountId", e.target.value)}
+          aria-label="Фильтр по счёту"
+          className={cn(
+            "input h-10 text-sm",
+            value.accountId && "border-primary/40",
+          )}
+        >
+          <option value="">Все счета</option>
+          {accounts.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.icon ? `${a.icon} ${a.name}` : a.name}
+            </option>
+          ))}
+        </select>
+
+        {showCategoryFilter && (
+          <select
+            value={value.categoryId}
+            onChange={(e) => set("categoryId", e.target.value)}
+            aria-label="Фильтр по статье"
+            className={cn(
+              "input h-10 text-sm",
+              value.categoryId && "border-primary/40",
+            )}
+          >
+            <option value="">Все статьи</option>
+            {(value.type === "ALL" || value.type === "EXPENSE") &&
+              orderedExpense.length > 0 && (
+                <optgroup label="Расходы">
+                  {orderedExpense.map(({ item, depth }) => (
+                    <option key={`e-${item.id}`} value={item.id}>
+                      {depth > 0 ? "— " : ""}
+                      {item.icon ? `${item.icon} ${item.name}` : item.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            {(value.type === "ALL" || value.type === "INCOME") &&
+              orderedIncome.length > 0 && (
+                <optgroup label="Доходы">
+                  {orderedIncome.map(({ item, depth }) => (
+                    <option key={`i-${item.id}`} value={item.id}>
+                      {depth > 0 ? "— " : ""}
+                      {item.icon ? `${item.icon} ${item.name}` : item.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+          </select>
+        )}
       </div>
 
       {isFilterActive(value) && (

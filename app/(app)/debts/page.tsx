@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { requireActiveSubscription } from "@/lib/dal";
+import { countDebtDuplicateGroups } from "@/lib/debtRepo";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
   AddDebtButton,
@@ -12,11 +13,14 @@ export const metadata = { title: "Долги — Финансыр" };
 
 export default async function DebtsPage() {
   const userId = await requireActiveSubscription();
-  const debts = await prisma.debt.findMany({
-    where: { userId },
-    orderBy: [{ status: "asc" }, { createdAt: "desc" }],
-    include: { payments: { orderBy: { date: "desc" } } },
-  });
+  const [debts, duplicateGroups] = await Promise.all([
+    prisma.debt.findMany({
+      where: { userId },
+      orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+      include: { payments: { orderBy: { date: "desc" } } },
+    }),
+    countDebtDuplicateGroups(userId),
+  ]);
 
   const dto: DebtWithPayments[] = debts.map((d) => ({
     id: d.id,
@@ -62,7 +66,7 @@ export default async function DebtsPage() {
         />
       </div>
 
-      <DebtsManager debts={dto} />
+      <DebtsManager debts={dto} duplicateGroups={duplicateGroups} />
     </>
   );
 }

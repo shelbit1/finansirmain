@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import type { AssetType, DebtDirection, TransactionType } from "@prisma/client";
 import { cn, formatMoney, toInputDate } from "@/lib/utils";
 import {
@@ -157,6 +157,27 @@ export function TransactionForm({
   const effectiveType: TransactionType =
     tab === "DEBT" ? debtType : (tab as TransactionType);
 
+  // Опции для выбора имени человека в Combobox. Если редактируем операцию,
+  // в которой имя уже не входит в актуальный список (последний долг по этому
+  // человеку был закрыт), добавляем «фантомную» опцию, чтобы defaultValue
+  // совпал с одним из элементов и отобразился в инпуте.
+  const personOptions = useMemo<ComboboxItem[]>(() => {
+    const set = new Set<string>();
+    const items: ComboboxItem[] = [];
+    for (const n of personNames) {
+      const key = n.toLowerCase();
+      if (!set.has(key)) {
+        set.add(key);
+        items.push({ id: n, name: n, icon: null });
+      }
+    }
+    const current = transaction?.personName?.trim();
+    if (current && !set.has(current.toLowerCase())) {
+      items.unshift({ id: current, name: current, icon: null });
+    }
+    return items;
+  }, [personNames, transaction?.personName]);
+
   const isNewDebt = effectiveType === "DEBT_TAKE" || effectiveType === "DEBT_GIVE";
   const isDebtPayment =
     effectiveType === "DEBT_RETURN" || effectiveType === "DEBT_RECEIVE";
@@ -301,28 +322,21 @@ export function TransactionForm({
       {isNewDebt && (
         <div>
           <label className="label">Имя человека</label>
-          <input
+          <Combobox
             name="personName"
-            type="text"
             required
-            maxLength={80}
             defaultValue={transaction?.personName ?? ""}
+            options={personOptions}
             placeholder="Например: Дима"
-            className="input"
-            list={personNames.length > 0 ? "debt-person-names" : undefined}
-            autoComplete="off"
+            emptyText="Начните вводить имя"
+            onCreate={(q) =>
+              Promise.resolve({ id: q, name: q, icon: null })
+            }
+            createLabel={(q) => `Использовать «${q}»`}
           />
-          {personNames.length > 0 && (
-            <datalist id="debt-person-names">
-              {personNames.map((n) => (
-                <option key={n} value={n} />
-              ))}
-            </datalist>
-          )}
           <p className="text-xs text-text-muted mt-1">
-            {personNames.length > 0
-              ? "Можно выбрать из списка или ввести новое имя. Долг автоматически появится в разделе «Долги»."
-              : "Долг автоматически появится в разделе «Долги»."}
+            Можно выбрать существующее имя или ввести новое — повторные займы у
+            одного человека суммируются в одной записи раздела «Долги».
           </p>
         </div>
       )}
