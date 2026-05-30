@@ -15,10 +15,12 @@ import {
   MoreHorizontal,
   Wallet,
   Tag,
+  Building2,
+  PieChart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AccessTier } from "@/lib/access";
-import { getModeFromPath } from "@/lib/mode";
+import { getModeFromPath, type AppMode } from "@/lib/mode";
 
 type Tab = {
   href: string;
@@ -27,7 +29,7 @@ type Tab = {
   paid?: boolean;
 };
 
-const TABS: Tab[] = [
+const PERSONAL_TABS: Tab[] = [
   { href: "/dashboard", label: "Главная", icon: LayoutDashboard },
   { href: "/transactions", label: "Операции", icon: ArrowLeftRight },
   { href: "/reports", label: "Отчёт", icon: BarChart3 },
@@ -39,12 +41,29 @@ const TABS: Tab[] = [
   { href: "/categories", label: "Категории", icon: Tag },
 ];
 
+const RENTIER_TABS: Tab[] = [
+  { href: "/rentier/dashboard", label: "Главная", icon: LayoutDashboard },
+  { href: "/rentier/properties", label: "Объекты", icon: Building2 },
+  { href: "/rentier/portfolio", label: "Портфель", icon: PieChart },
+];
+
+const BUSINESS_TABS: Tab[] = [
+  { href: "/business/dashboard", label: "Главная", icon: LayoutDashboard },
+];
+
+const TABS_BY_MODE: Record<AppMode, Tab[]> = {
+  personal: PERSONAL_TABS,
+  rentier: RENTIER_TABS,
+  business: BUSINESS_TABS,
+};
+
 const VISIBLE_COUNT = 4;
 
 export function BottomBar({ tier }: { tier: AccessTier }) {
   const pathname = usePathname();
   const isFree = tier === "FREE";
   const mode = getModeFromPath(pathname);
+  const tabs = TABS_BY_MODE[mode];
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLLIElement>(null);
 
@@ -63,11 +82,10 @@ export function BottomBar({ tier }: { tier: AccessTier }) {
     setMoreOpen(false);
   }, [pathname]);
 
-  if (mode !== "personal") return null;
-
-  const needsOverflow = TABS.length > VISIBLE_COUNT + 1;
-  const visible = needsOverflow ? TABS.slice(0, VISIBLE_COUNT) : TABS;
-  const overflow = needsOverflow ? TABS.slice(VISIBLE_COUNT) : [];
+  // Overflow «Ещё» только в «Личном» — там много пунктов меню.
+  const needsOverflow = mode === "personal" && tabs.length > VISIBLE_COUNT + 1;
+  const visible = needsOverflow ? tabs.slice(0, VISIBLE_COUNT) : tabs;
+  const overflow = needsOverflow ? tabs.slice(VISIBLE_COUNT) : [];
   const overflowActive = overflow.some(
     (t) => pathname === t.href || pathname.startsWith(t.href + "/"),
   );
