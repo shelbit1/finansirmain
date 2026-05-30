@@ -34,6 +34,7 @@ function initialEconomics(p?: SerializedProperty): EconomicsValues {
     rentPerSqm: num(p?.rentPerSqm ?? null),
     rentIndexPct: num(p?.rentIndexPct ?? null),
     communal: num(p?.communal ?? null),
+    communalPaidBy: p?.communalPaidBy ?? "",
     tax: num(p?.tax ?? null),
     management: num(p?.management ?? null),
     otherCosts: num(p?.otherCosts ?? null),
@@ -69,9 +70,10 @@ function initialTenants(p?: SerializedProperty): TenantDraft[] {
 }
 
 const toNum = (v: string): number | null => {
-  if (!v) return null;
+  if (!v.trim()) return null;
   const n = Number(v.replace(/\s/g, "").replace(",", "."));
-  return Number.isFinite(n) ? n : null;
+  if (!Number.isFinite(n) || n === 0) return null;
+  return n;
 };
 
 export function PropertyForm({ property }: { property?: SerializedProperty }) {
@@ -146,6 +148,7 @@ export function PropertyForm({ property }: { property?: SerializedProperty }) {
       rentPerSqm: toNum(econ.rentPerSqm),
       rentIndexPct: toNum(econ.rentIndexPct),
       communal: toNum(econ.communal),
+      communalPaidBy: econ.communalPaidBy.trim() || null,
       tax: toNum(econ.tax),
       management: toNum(econ.management),
       otherCosts: toNum(econ.otherCosts),
@@ -153,16 +156,18 @@ export function PropertyForm({ property }: { property?: SerializedProperty }) {
       tenantPlan: hasTenants ? null : tenantPlan.trim() || null,
       vacancyMonths: hasTenants ? null : toNum(vacancyMonths),
       tenants: hasTenants
-        ? tenants.map((t) => ({
-            name: t.name.trim(),
-            category: t.category.trim() || null,
-            area: toNum(t.area),
-            rentMonth: toNum(t.rentMonth),
-            leaseStart: t.leaseStart || null,
-            leaseEnd: t.leaseEnd || null,
-            deposit: toNum(t.deposit),
-            notes: t.notes.trim() || null,
-          }))
+        ? tenants
+            .filter((t) => t.name.trim())
+            .map((t) => ({
+              name: t.name.trim(),
+              category: t.category.trim() || null,
+              area: toNum(t.area),
+              rentMonth: toNum(t.rentMonth),
+              leaseStart: t.leaseStart || null,
+              leaseEnd: t.leaseEnd || null,
+              deposit: toNum(t.deposit),
+              notes: t.notes.trim() || null,
+            }))
         : [],
     };
 

@@ -57,7 +57,6 @@ function TenantRow({
         <label className="block sm:col-span-2">
           <span className="label">Название / бренд</span>
           <input
-            required
             value={tenant.name}
             onChange={(e) => set("name", e.target.value)}
             className="input"

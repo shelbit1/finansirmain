@@ -98,6 +98,7 @@ export function buildPropertyUserMessage(
 **Аренда за кв.м**: ${rentPerSqm !== null ? `${rentPerSqm.toLocaleString("ru-RU")} ₽/кв.м` : "не указана"}
 **Индексация**: ${rentIndexPct !== null ? `${rentIndexPct}% в год` : "не указана"}
 **Коммуналка**: ${communal !== null ? `${communal.toLocaleString("ru-RU")} ₽/мес` : "не указана"}
+**Кто платит КУ**: ${p.communalPaidBy ?? "не указано"}
 **Налог**: ${tax !== null ? `${tax.toLocaleString("ru-RU")} ₽/год` : "не указан"}
 **Управление**: ${management !== null ? `${management.toLocaleString("ru-RU")} ₽/мес` : "не указано"}
 **Расчётные показатели**: ${yieldsLine || "недостаточно данных"}

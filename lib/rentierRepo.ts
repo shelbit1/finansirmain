@@ -38,6 +38,7 @@ function basePropertyData(input: PropertyInput) {
     rentPerSqm: dec(input.rentPerSqm),
     rentIndexPct: dec(input.rentIndexPct),
     communal: dec(input.communal),
+    communalPaidBy: input.communalPaidBy ?? null,
     tax: dec(input.tax),
     management: dec(input.management),
     otherCosts: dec(input.otherCosts),

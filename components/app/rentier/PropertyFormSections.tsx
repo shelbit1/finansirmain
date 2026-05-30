@@ -169,7 +169,14 @@ export function GeographySection({
         </label>
         <label className="block">
           <span className="label">Год постройки</span>
-          <input type="number" inputMode="numeric" min={1800} max={2100} value={values.yearBuilt} onChange={(e) => set("yearBuilt", e.target.value)} className="input" />
+          <input
+            type="number"
+            inputMode="numeric"
+            value={values.yearBuilt}
+            onChange={(e) => set("yearBuilt", e.target.value)}
+            className="input"
+            placeholder="Не указан"
+          />
         </label>
       </div>
     </section>

@@ -37,7 +37,9 @@ const optionalText = (max = 500) =>
 const optionalNumber = z
   .union([z.coerce.number(), z.literal("").transform(() => null), z.null()])
   .optional()
-  .transform((v) => (typeof v === "number" && Number.isFinite(v) ? v : null));
+  .transform((v) =>
+    typeof v === "number" && Number.isFinite(v) && v !== 0 ? v : null,
+  );
 
 const optionalPositiveInt = z
   .union([
@@ -46,7 +48,21 @@ const optionalPositiveInt = z
     z.null(),
   ])
   .optional()
-  .transform((v) => (typeof v === "number" ? Math.round(v) : null));
+  .transform((v) =>
+    typeof v === "number" && v > 0 ? Math.round(v) : null,
+  );
+
+const optionalYearBuilt = z
+  .union([
+    z.coerce.number().int(),
+    z.literal("").transform(() => null),
+    z.null(),
+  ])
+  .optional()
+  .transform((v) => {
+    if (typeof v !== "number" || v < 1800 || v > 2100) return null;
+    return v;
+  });
 
 const optionalDate = z
   .union([z.coerce.date(), z.literal("").transform(() => null), z.null()])
@@ -54,7 +70,7 @@ const optionalDate = z
   .transform((v) => (v instanceof Date && !Number.isNaN(v.getTime()) ? v : null));
 
 export const tenantSchema = z.object({
-  name: z.string().trim().min(1, "Введите название арендатора").max(120),
+  name: z.string().trim().max(120).optional().default(""),
   category: optionalText(80),
   area: optionalNumber,
   rentMonth: optionalNumber,
@@ -78,9 +94,11 @@ export const propertySchema = z.object({
   floor: z
     .union([z.coerce.number().int(), z.literal("").transform(() => null), z.null()])
     .optional()
-    .transform((v) => (typeof v === "number" ? Math.round(v) : null)),
+    .transform((v) =>
+      typeof v === "number" && v !== 0 ? Math.round(v) : null,
+    ),
   totalFloors: optionalPositiveInt,
-  yearBuilt: optionalPositiveInt,
+  yearBuilt: optionalYearBuilt,
 
   area: optionalNumber,
   ceilingH: optionalNumber,
@@ -94,6 +112,7 @@ export const propertySchema = z.object({
   rentPerSqm: optionalNumber,
   rentIndexPct: optionalNumber,
   communal: optionalNumber,
+  communalPaidBy: optionalText(200),
   tax: optionalNumber,
   management: optionalNumber,
   otherCosts: optionalNumber,
@@ -115,7 +134,10 @@ export const propertySchema = z.object({
     .or(z.literal("").transform(() => null)),
 
   tenants: z.array(tenantSchema).optional().default([]),
-});
+}).transform((data) => ({
+  ...data,
+  tenants: (data.tenants ?? []).filter((t) => t.name.trim().length > 0),
+}));
 
 export type PropertyInput = z.infer<typeof propertySchema>;
 export type TenantInput = z.infer<typeof tenantSchema>;

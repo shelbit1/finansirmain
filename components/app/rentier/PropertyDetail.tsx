@@ -125,6 +125,10 @@ export function PropertyDetail({ property }: { property: SerializedProperty }) {
             label="Коммуналка"
             value={property.communal ? `${formatMoney(property.communal)} /мес` : "—"}
           />
+          <Row
+            label="Кто платит КУ"
+            value={property.communalPaidBy ?? "—"}
+          />
           <Row label="Налог" value={property.tax ? `${formatMoney(property.tax)} /год` : "—"} />
           <Row
             label="Управление"

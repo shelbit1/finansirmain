@@ -181,6 +181,7 @@ export type SerializedProperty = {
   rentPerSqm: number | null;
   rentIndexPct: number | null;
   communal: number | null;
+  communalPaidBy: string | null;
   tax: number | null;
   management: number | null;
   otherCosts: number | null;
@@ -239,6 +240,7 @@ export function serializeProperty(p: PropertyWithTenants): SerializedProperty {
     rentPerSqm: dec(p.rentPerSqm),
     rentIndexPct: dec(p.rentIndexPct),
     communal: dec(p.communal),
+    communalPaidBy: p.communalPaidBy,
     tax: dec(p.tax),
     management: dec(p.management),
     otherCosts: dec(p.otherCosts),

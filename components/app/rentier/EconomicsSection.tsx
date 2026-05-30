@@ -12,6 +12,7 @@ export type EconomicsValues = {
   rentPerSqm: string;
   rentIndexPct: string;
   communal: string;
+  communalPaidBy: string;
   tax: string;
   management: string;
   otherCosts: string;
@@ -127,6 +128,16 @@ export function EconomicsSection({
         </h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Коммуналка" suffix="₽/мес" name="communal" value={values.communal} onChange={(v) => onChange("communal", v)} />
+          <label className="block sm:col-span-2">
+            <span className="label">Кто платит за коммунальные услуги</span>
+            <input
+              type="text"
+              value={values.communalPaidBy}
+              onChange={(e) => onChange("communalPaidBy", e.target.value)}
+              className="input"
+              placeholder="Напишите максимально подробно по распределению КУ"
+            />
+          </label>
           <Field label="Налог на имущество" suffix="₽/год" name="tax" value={values.tax} onChange={(v) => onChange("tax", v)} />
           <Field label="Управление" suffix="₽/мес" name="management" value={values.management} onChange={(v) => onChange("management", v)} />
           <Field label="Прочие расходы" suffix="₽/мес" name="otherCosts" value={values.otherCosts} onChange={(v) => onChange("otherCosts", v)} />

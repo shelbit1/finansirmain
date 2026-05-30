@@ -414,8 +414,9 @@ model RentierProperty {
   rentMonth    Decimal? @db.Decimal(18, 2)
   rentPerSqm   Decimal? @db.Decimal(18, 2)
   rentIndexPct Decimal? @db.Decimal(6, 2)
-  communal     Decimal? @db.Decimal(18, 2)
-  tax          Decimal? @db.Decimal(18, 2)
+  communal         Decimal? @db.Decimal(18, 2)
+  communalPaidBy   String?
+  tax              Decimal? @db.Decimal(18, 2)
   management   Decimal? @db.Decimal(18, 2)
   otherCosts   Decimal? @db.Decimal(18, 2)
 
