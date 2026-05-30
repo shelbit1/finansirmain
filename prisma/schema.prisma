@@ -32,6 +32,8 @@ model User {
   plans             Plan[]
   subscription      Subscription?
   payments          Payment[]
+  rentierProperties RentierProperty[]
+  rentierAIAnalyses RentierAIAnalysis[]
 }
 
 // ─── ПОДПИСКА И ПЛАТЕЖИ ──────────────────────────────────────────────────────
@@ -348,4 +350,139 @@ model AssetValueHistory {
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([assetId, date])
+}
+
+// ─── РАНТЬЕ (КОММЕРЧЕСКАЯ НЕДВИЖИМОСТЬ) ──────────────────────────────────────
+
+enum RentierPropertyType {
+  FREE_PURPOSE
+  STREET_RETAIL
+  SHOPPING_CENTER
+  LAND
+  PARKING
+  WAREHOUSE
+  STORAGE
+}
+
+enum RentierPropertyStatus {
+  WATCHING
+  NEGOTIATING
+  OWNED
+  REJECTED
+}
+
+enum RentierEntrance {
+  STREET
+  YARD
+  SHARED
+}
+
+enum RentierCondition {
+  SHELL
+  COSMETIC
+  GOOD
+  EXCELLENT
+}
+
+model RentierProperty {
+  id     String                @id @default(cuid())
+  userId String
+  user   User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type   RentierPropertyType
+  status RentierPropertyStatus @default(WATCHING)
+  title  String
+  notes  String?
+
+  address     String?
+  city        String?
+  district    String?
+  metro       String?
+  metroWalk   Int?
+  floor       Int?
+  totalFloors Int?
+  yearBuilt   Int?
+
+  area      Decimal?          @db.Decimal(18, 2)
+  ceilingH  Decimal?          @db.Decimal(8, 2)
+  entrance  RentierEntrance?
+  condition RentierCondition?
+
+  askPrice     Decimal? @db.Decimal(18, 2)
+  ownPrice     Decimal? @db.Decimal(18, 2)
+  pricePerSqm  Decimal? @db.Decimal(18, 2)
+  rentMonth    Decimal? @db.Decimal(18, 2)
+  rentPerSqm   Decimal? @db.Decimal(18, 2)
+  rentIndexPct Decimal? @db.Decimal(6, 2)
+  communal     Decimal? @db.Decimal(18, 2)
+  tax          Decimal? @db.Decimal(18, 2)
+  management   Decimal? @db.Decimal(18, 2)
+  otherCosts   Decimal? @db.Decimal(18, 2)
+
+  grossYield   Decimal? @db.Decimal(6, 2)
+  netYield     Decimal? @db.Decimal(6, 2)
+  paybackYears Decimal? @db.Decimal(6, 1)
+
+  hasTenants    Boolean         @default(false)
+  tenants       RentierTenant[]
+  tenantPlan    String?
+  vacancyMonths Int?
+
+  sourceUrl String?
+  images    RentierImage[]
+
+  aiAnalyses RentierAIAnalysis[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, status])
+}
+
+model RentierTenant {
+  id         String          @id @default(cuid())
+  propertyId String
+  property   RentierProperty @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  name       String
+  category   String?
+  area       Decimal?  @db.Decimal(18, 2)
+  rentMonth  Decimal?  @db.Decimal(18, 2)
+  leaseStart DateTime?
+  leaseEnd   DateTime?
+  deposit    Decimal?  @db.Decimal(18, 2)
+  notes      String?
+
+  createdAt DateTime @default(now())
+
+  @@index([propertyId])
+}
+
+model RentierImage {
+  id         String          @id @default(cuid())
+  propertyId String
+  property   RentierProperty @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  url        String
+  caption    String?
+  order      Int             @default(0)
+  createdAt  DateTime        @default(now())
+
+  @@index([propertyId])
+}
+
+model RentierAIAnalysis {
+  id         String           @id @default(cuid())
+  userId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId String?
+  property   RentierProperty? @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  prompt    String
+  response  String   @db.Text
+  model     String   @default("claude-opus-4-8")
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([propertyId, createdAt])
 }

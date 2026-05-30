@@ -18,6 +18,8 @@ import {
   Mail,
   Phone,
   Lock,
+  Building2,
+  PieChart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AccessTier } from "@/lib/access";
@@ -62,6 +64,8 @@ const PERSONAL_NAV: NavEntry[] = [
 
 const RENTIER_NAV: NavEntry[] = [
   { href: "/rentier/dashboard", label: "Дашборд", icon: LayoutDashboard },
+  { href: "/rentier/properties", label: "Объекты", icon: Building2 },
+  { href: "/rentier/portfolio", label: "Портфель", icon: PieChart },
 ];
 
 const BUSINESS_NAV: NavEntry[] = [
