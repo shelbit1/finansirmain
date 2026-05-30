@@ -110,6 +110,18 @@ export function yieldColor(netYield: number | null | undefined): string {
   return "bg-rose-100 text-rose-700";
 }
 
+/** Цена для списка/карточки: до покупки — цена продавца, после — своя. */
+export function cardDisplayPrice(property: {
+  status: RentierPropertyStatus;
+  askPrice: number | null;
+  ownPrice: number | null;
+}): number | null {
+  if (property.status === "OWNED") {
+    return property.ownPrice ?? property.askPrice;
+  }
+  return property.askPrice ?? property.ownPrice;
+}
+
 type PropertyWithTenants = RentierProperty & { tenants: RentierTenant[] };
 
 export function dec(

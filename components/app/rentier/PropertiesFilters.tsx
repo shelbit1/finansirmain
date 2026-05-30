@@ -47,7 +47,7 @@ export function PropertiesFilters({
     : "Все типы";
 
   return (
-    <div className="card p-3 sm:p-4 mb-5 flex items-center gap-2">
+    <div className="card p-2.5 sm:p-3 mb-4 flex items-center gap-2 w-fit max-w-full">
       <FilterDropdown
         label={statusLabel}
         active={!!status}

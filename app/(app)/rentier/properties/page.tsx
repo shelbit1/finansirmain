@@ -69,7 +69,7 @@ export default async function PropertiesListPage({
           }
         />
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="flex flex-wrap gap-2">
           {properties.map((p) => (
             <PropertyCard key={p.id} property={serializeProperty(p)} />
           ))}

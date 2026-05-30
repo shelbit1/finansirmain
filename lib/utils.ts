@@ -43,6 +43,34 @@ export function formatMoney(value: number | string, currency: string = "RUB"): s
   }
 }
 
+/** Компактный формат без копеек: «3 млн», «100 тыс», иначе целое число. */
+export function formatMoneyCompact(value: number | string): string {
+  const num = Math.round(typeof value === "string" ? Number(value) : value);
+  const abs = Math.abs(num);
+
+  const formatUnit = (amount: number, unit: "млн" | "тыс") => {
+    const rounded = Math.round(amount * 10) / 10;
+    const text = Number.isInteger(rounded)
+      ? String(rounded)
+      : rounded.toFixed(1).replace(".", ",");
+    return `${text} ${unit}`;
+  };
+
+  if (abs >= 1_000_000) return formatUnit(num / 1_000_000, "млн");
+  if (abs >= 1_000) return formatUnit(num / 1_000, "тыс");
+  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(num);
+}
+
+/** Компактный процент без лишних нулей: «12%», «8,5%». */
+export function formatPercentCompact(value: number | string): string {
+  const num = typeof value === "string" ? Number(value) : value;
+  const rounded = Math.round(num * 10) / 10;
+  const text = Number.isInteger(rounded)
+    ? String(rounded)
+    : rounded.toFixed(1).replace(".", ",");
+  return `${text}%`;
+}
+
 export function formatNumber(value: number | string): string {
   const num = typeof value === "string" ? Number(value) : value;
   return numberFormatter.format(num);

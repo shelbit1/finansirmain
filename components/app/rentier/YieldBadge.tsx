@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn, formatPercentCompact } from "@/lib/utils";
 import { yieldColor } from "@/lib/rentier";
 
 export function YieldBadge({
@@ -18,7 +18,7 @@ export function YieldBadge({
         className,
       )}
     >
-      {value === null || value === undefined ? "—" : `${value}%`}
+      {value === null || value === undefined ? "—" : formatPercentCompact(value)}
       {label && <span className="font-medium opacity-80">{label}</span>}
     </span>
   );
