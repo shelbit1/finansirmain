@@ -90,7 +90,7 @@ export function PortfolioSummary({ data }: { data: PortfolioSummaryData }) {
   const byTypeItems = (Object.keys(data.byType) as RentierPropertyType[])
     .map((k) => ({
       key: k,
-      label: `${PROPERTY_TYPE_LABELS[k].emoji} ${PROPERTY_TYPE_LABELS[k].label}`,
+      label: PROPERTY_TYPE_LABELS[k].label,
       count: data.byType[k],
     }))
     .filter((it) => it.count > 0)

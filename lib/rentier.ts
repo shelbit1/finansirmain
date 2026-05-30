@@ -10,25 +10,25 @@ import type {
 
 export const PROPERTY_TYPE_LABELS: Record<
   RentierPropertyType,
-  { label: string; emoji: string }
+  { label: string; abbr: string }
 > = {
-  FREE_PURPOSE: { label: "Своб. назначения (ПСН)", emoji: "🏢" },
-  STREET_RETAIL: { label: "Стрит-ритейл", emoji: "🏪" },
-  SHOPPING_CENTER: { label: "Помещение в ТЦ", emoji: "🛍️" },
-  LAND: { label: "Земля", emoji: "🌍" },
-  PARKING: { label: "Машиноместо", emoji: "🚗" },
-  WAREHOUSE: { label: "Склад", emoji: "📦" },
-  STORAGE: { label: "Кладовка", emoji: "🗄️" },
+  FREE_PURPOSE: { label: "Своб. назначения (ПСН)", abbr: "ПСН" },
+  STREET_RETAIL: { label: "Стрит-ритейл", abbr: "СР" },
+  SHOPPING_CENTER: { label: "Помещение в ТЦ", abbr: "ТЦ" },
+  LAND: { label: "Земля", abbr: "ЗУ" },
+  PARKING: { label: "Машиноместо", abbr: "ММ" },
+  WAREHOUSE: { label: "Склад", abbr: "СКЛ" },
+  STORAGE: { label: "Кладовка", abbr: "КЛД" },
 };
 
 export const PROPERTY_STATUS_LABELS: Record<
   RentierPropertyStatus,
   { label: string; color: string }
 > = {
-  WATCHING: { label: "Слежу", color: "bg-slate-100 text-slate-700" },
-  NEGOTIATING: { label: "Переговоры", color: "bg-amber-100 text-amber-800" },
-  OWNED: { label: "Куплен", color: "bg-emerald-100 text-emerald-800" },
-  REJECTED: { label: "Отклонён", color: "bg-rose-100 text-rose-700" },
+  WATCHING: { label: "Слежу", color: "border border-slate-200 text-slate-600 bg-slate-50" },
+  NEGOTIATING: { label: "Переговоры", color: "border border-amber-200 text-amber-800 bg-amber-50" },
+  OWNED: { label: "Куплен", color: "border border-emerald-200 text-emerald-800 bg-emerald-50" },
+  REJECTED: { label: "Отклонён", color: "border border-rose-200 text-rose-700 bg-rose-50" },
 };
 
 export const ENTRANCE_LABELS: Record<RentierEntrance, string> = {

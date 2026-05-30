@@ -56,7 +56,9 @@ export function BasicSection({
                     : "border-border hover:bg-bg"
                 }`}
               >
-                <span>{meta.emoji}</span>
+                <span className="shrink-0 font-semibold text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded border border-border bg-bg">
+                  {meta.abbr}
+                </span>
                 <span className="truncate">{meta.label}</span>
               </button>
             );

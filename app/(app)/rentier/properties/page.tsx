@@ -9,6 +9,7 @@ import { prisma } from "@/lib/db";
 import { requireActiveSubscription } from "@/lib/dal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ScrollableTabs } from "@/components/ui/ScrollableTabs";
 import { PropertyCard } from "@/components/app/rentier/PropertyCard";
 import {
   PROPERTY_STATUS_LABELS,
@@ -19,6 +20,7 @@ import {
   propertyStatusSchema,
   propertyTypeSchema,
 } from "@/lib/rentierValidators";
+import { cn } from "@/lib/utils";
 
 type Search = { status?: string; type?: string };
 
@@ -74,36 +76,48 @@ export default async function PropertiesListPage({
         }
       />
 
-      <div className="space-y-3 mb-5">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-text-muted">Статус:</span>
-          <FilterChip href={buildHref(active, { status: undefined })} active={!active.status}>
-            Все
-          </FilterChip>
-          {STATUS_VALUES.map((s) => (
-            <FilterChip
-              key={s}
-              href={buildHref(active, { status: s })}
-              active={active.status === s}
-            >
-              {PROPERTY_STATUS_LABELS[s].label}
+      <div className="card p-3 sm:p-4 mb-5 space-y-3">
+        <div>
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-text-muted mb-2 block">
+            Статус
+          </span>
+          <ScrollableTabs>
+            <FilterChip href={buildHref(active, { status: undefined })} active={!active.status}>
+              Все
             </FilterChip>
-          ))}
+            {STATUS_VALUES.map((s) => (
+              <FilterChip
+                key={s}
+                href={buildHref(active, { status: s })}
+                active={active.status === s}
+              >
+                {PROPERTY_STATUS_LABELS[s].label}
+              </FilterChip>
+            ))}
+          </ScrollableTabs>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-text-muted">Тип:</span>
-          <FilterChip href={buildHref(active, { type: undefined })} active={!active.type}>
-            Все
-          </FilterChip>
-          {TYPE_VALUES.map((t) => (
-            <FilterChip
-              key={t}
-              href={buildHref(active, { type: t })}
-              active={active.type === t}
-            >
-              {PROPERTY_TYPE_LABELS[t].emoji} {PROPERTY_TYPE_LABELS[t].label}
+        <div className="pt-3 border-t border-border">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-text-muted mb-2 block">
+            Тип
+          </span>
+          <ScrollableTabs>
+            <FilterChip href={buildHref(active, { type: undefined })} active={!active.type}>
+              Все
             </FilterChip>
-          ))}
+            {TYPE_VALUES.map((t) => (
+              <FilterChip
+                key={t}
+                href={buildHref(active, { type: t })}
+                active={active.type === t}
+              >
+                <span className="font-semibold">{PROPERTY_TYPE_LABELS[t].abbr}</span>
+                <span className="hidden sm:inline text-text-muted font-normal">
+                  {" "}
+                  · {PROPERTY_TYPE_LABELS[t].label}
+                </span>
+              </FilterChip>
+            ))}
+          </ScrollableTabs>
         </div>
       </div>
 
@@ -120,7 +134,7 @@ export default async function PropertiesListPage({
           }
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {properties.map((p) => (
             <PropertyCard key={p.id} property={serializeProperty(p)} />
           ))}
@@ -142,11 +156,12 @@ function FilterChip({
   return (
     <Link
       href={href}
-      className={`text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors ${
+      className={cn(
+        "px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors",
         active
-          ? "bg-primary text-white"
-          : "bg-bg text-text-muted hover:text-text"
-      }`}
+          ? "bg-surface shadow-sm text-text"
+          : "text-text-muted hover:text-text",
+      )}
     >
       {children}
     </Link>

@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { Calendar, ExternalLink, MapPin, Pencil, Ruler, Train, Users } from "lucide-react";
 import { PropertyNotes } from "./PropertyNotes";
+import { PropertyTypeBadge } from "./PropertyTypeBadge";
 import { formatMoney } from "@/lib/utils";
 import {
   CONDITION_LABELS,
   ENTRANCE_LABELS,
   PROPERTY_STATUS_LABELS,
-  PROPERTY_TYPE_LABELS,
   type SerializedProperty,
 } from "@/lib/rentier";
 import { YieldBadge } from "./YieldBadge";
@@ -32,7 +32,6 @@ function fmtDate(iso: string | null): string {
 }
 
 export function PropertyDetail({ property }: { property: SerializedProperty }) {
-  const type = PROPERTY_TYPE_LABELS[property.type];
   const status = PROPERTY_STATUS_LABELS[property.status];
   const location =
     [property.city, property.district, property.address]
@@ -45,11 +44,10 @@ export function PropertyDetail({ property }: { property: SerializedProperty }) {
       <div className="card p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 text-sm text-text-muted mb-1">
-              <span>{type.emoji}</span>
-              <span>{type.label}</span>
+            <div className="flex flex-wrap items-center gap-2 text-sm text-text-muted mb-1">
+              <PropertyTypeBadge type={property.type} showLabel />
               <span
-                className={`ml-2 text-[10px] font-semibold uppercase tracking-wide px-2 py-1 rounded-md ${status.color}`}
+                className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-1 rounded ${status.color}`}
               >
                 {status.label}
               </span>

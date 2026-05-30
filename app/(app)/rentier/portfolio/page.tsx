@@ -13,8 +13,8 @@ import {
   type PortfolioSummaryData,
 } from "@/components/app/rentier/PortfolioSummary";
 import { AIChat } from "@/components/app/rentier/AIChat";
+import { PropertyTypeBadge } from "@/components/app/rentier/PropertyTypeBadge";
 import {
-  PROPERTY_TYPE_LABELS,
   dec,
   serializeProperty,
 } from "@/lib/rentier";
@@ -137,9 +137,7 @@ export default async function PortfolioPage() {
                   href={`/rentier/properties/${p.id}`}
                   className="flex items-center gap-3 py-2.5 hover:bg-bg rounded-md px-2 -mx-2"
                 >
-                  <span className="text-lg">
-                    {PROPERTY_TYPE_LABELS[p.type].emoji}
-                  </span>
+                  <PropertyTypeBadge type={p.type} className="shrink-0" />
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-medium truncate">{p.title}</div>
                     <div className="text-xs text-text-muted truncate">
