@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Calendar, ExternalLink, MapPin, Pencil, Ruler, Train, Users } from "lucide-react";
 import { PropertyNotes } from "./PropertyNotes";
 import { PropertyTypeBadge } from "./PropertyTypeBadge";
-import { formatMoney } from "@/lib/utils";
+import { formatMoney, isPlaceholderDate } from "@/lib/utils";
 import {
   CONDITION_LABELS,
   ENTRANCE_LABELS,
@@ -25,7 +25,7 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 function fmtDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso || isPlaceholderDate(iso)) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleDateString("ru-RU");
@@ -171,7 +171,7 @@ export function PropertyDetail({ property }: { property: SerializedProperty }) {
                       <span>{formatMoney(t.rentMonth)} /мес</span>
                     )}
                     {t.deposit && <span>депозит {formatMoney(t.deposit)}</span>}
-                    {t.leaseEnd && (
+                    {t.leaseEnd && !isPlaceholderDate(t.leaseEnd) && (
                       <span>
                         <Calendar className="w-3 h-3 inline -mt-0.5 mr-0.5" />
                         до {fmtDate(t.leaseEnd)}

@@ -95,6 +95,19 @@ export function todayString(): string {
 }
 
 /**
+ * Даты-заглушки (Unix epoch и т.п.) считаем «не указано».
+ * Так в форме не появляется 01.01.1970 вместо пустого поля договора.
+ */
+export function isPlaceholderDate(
+  date: Date | string | null | undefined,
+): boolean {
+  if (!date) return true;
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return true;
+  return d.getFullYear() < 1971;
+}
+
+/**
  * Возвращает дату в формате `YYYY-MM-DD` по локальному календарю.
  * Используется для `<input type="date">` и для построения параметров URL
  * (например, в фильтрах отчётов). Через `toISOString()` нельзя — это даст
@@ -102,7 +115,7 @@ export function todayString(): string {
  * сдвигает полуночные даты на сутки назад.
  */
 export function toInputDate(date: Date | string | null | undefined): string {
-  if (!date) return "";
+  if (!date || isPlaceholderDate(date)) return "";
   const d = typeof date === "string" ? new Date(date) : date;
   if (Number.isNaN(d.getTime())) return "";
   const y = d.getFullYear();

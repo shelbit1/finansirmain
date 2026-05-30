@@ -67,7 +67,12 @@ const optionalYearBuilt = z
 const optionalDate = z
   .union([z.coerce.date(), z.literal("").transform(() => null), z.null()])
   .optional()
-  .transform((v) => (v instanceof Date && !Number.isNaN(v.getTime()) ? v : null));
+  .transform((v) => {
+    if (!(v instanceof Date) || Number.isNaN(v.getTime()) || v.getFullYear() < 1971) {
+      return null;
+    }
+    return v;
+  });
 
 export const tenantSchema = z.object({
   name: z.string().trim().max(120).optional().default(""),

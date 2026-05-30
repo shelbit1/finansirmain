@@ -9,7 +9,7 @@ import type {
   RentierPropertyType,
 } from "@prisma/client";
 import { type SerializedProperty } from "@/lib/rentier";
-import { toInputDate } from "@/lib/utils";
+import { toInputDate, isPlaceholderDate } from "@/lib/utils";
 import {
   EconomicsSection,
   type EconomicsKey,
@@ -62,12 +62,17 @@ function initialTenants(p?: SerializedProperty): TenantDraft[] {
     category: t.category ?? "",
     area: num(t.area),
     rentMonth: num(t.rentMonth),
-    leaseStart: t.leaseStart ? toInputDate(new Date(t.leaseStart)) : "",
-    leaseEnd: t.leaseEnd ? toInputDate(new Date(t.leaseEnd)) : "",
+    leaseStart: t.leaseStart && !isPlaceholderDate(t.leaseStart) ? toInputDate(t.leaseStart) : "",
+    leaseEnd: t.leaseEnd && !isPlaceholderDate(t.leaseEnd) ? toInputDate(t.leaseEnd) : "",
     deposit: num(t.deposit),
     notes: t.notes ?? "",
   }));
 }
+
+const toOptionalDate = (v: string): string | null => {
+  if (!v.trim() || isPlaceholderDate(v)) return null;
+  return v;
+};
 
 const toNum = (v: string): number | null => {
   if (!v.trim()) return null;
@@ -163,8 +168,8 @@ export function PropertyForm({ property }: { property?: SerializedProperty }) {
               category: t.category.trim() || null,
               area: toNum(t.area),
               rentMonth: toNum(t.rentMonth),
-              leaseStart: t.leaseStart || null,
-              leaseEnd: t.leaseEnd || null,
+              leaseStart: toOptionalDate(t.leaseStart),
+              leaseEnd: toOptionalDate(t.leaseEnd),
               deposit: toNum(t.deposit),
               notes: t.notes.trim() || null,
             }))

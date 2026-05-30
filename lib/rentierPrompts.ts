@@ -6,6 +6,7 @@ import {
   CONDITION_LABELS,
   dec,
 } from "@/lib/rentier";
+import { isPlaceholderDate } from "@/lib/utils";
 
 type PropertyWithTenants = RentierProperty & { tenants: RentierTenant[] };
 
@@ -53,7 +54,7 @@ export function buildPropertyUserMessage(
             const rent = dec(t.rentMonth);
             if (rent !== null)
               parts.push(`${rent.toLocaleString("ru-RU")} ₽/мес`);
-            if (t.leaseEnd)
+            if (t.leaseEnd && !isPlaceholderDate(t.leaseEnd))
               parts.push(`договор до ${t.leaseEnd.toLocaleDateString("ru-RU")}`);
             return parts.join(", ");
           })

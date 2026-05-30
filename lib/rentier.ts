@@ -7,6 +7,7 @@ import type {
   RentierCondition,
   Prisma,
 } from "@prisma/client";
+import { isPlaceholderDate } from "@/lib/utils";
 
 export const PROPERTY_TYPE_LABELS: Record<
   RentierPropertyType,
@@ -207,8 +208,14 @@ export function serializeTenant(t: RentierTenant): SerializedTenant {
     category: t.category,
     area: dec(t.area),
     rentMonth: dec(t.rentMonth),
-    leaseStart: t.leaseStart ? t.leaseStart.toISOString() : null,
-    leaseEnd: t.leaseEnd ? t.leaseEnd.toISOString() : null,
+    leaseStart:
+      t.leaseStart && !isPlaceholderDate(t.leaseStart)
+        ? t.leaseStart.toISOString()
+        : null,
+    leaseEnd:
+      t.leaseEnd && !isPlaceholderDate(t.leaseEnd)
+        ? t.leaseEnd.toISOString()
+        : null,
     deposit: dec(t.deposit),
     notes: t.notes,
   };
