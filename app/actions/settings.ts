@@ -2,11 +2,11 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireUserId } from "@/lib/dal";
-import { destroySession } from "@/lib/session";
+import { requireUserId, getCurrentUser } from "@/lib/dal";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { passwordSchema } from "@/lib/validators";
 
 export type SettingsState = { ok?: boolean; error?: string } | null;
@@ -39,7 +39,9 @@ export async function changePassword(
   _prev: SettingsState,
   formData: FormData,
 ): Promise<SettingsState> {
-  const userId = await requireUserId();
+  const user = await getCurrentUser();
+  if (!user) return { error: "Пользователь не найден" };
+
   const parsed = changePasswordSchema.safeParse({
     current: formData.get("current"),
     next: formData.get("next"),
@@ -47,20 +49,34 @@ export async function changePassword(
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Некорректные данные" };
   }
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) return { error: "Пользователь не найден" };
 
-  const ok = await bcrypt.compare(parsed.data.current, user.password);
-  if (!ok) return { error: "Неверный текущий пароль" };
+  const supabase = await createClient();
 
-  const hash = await bcrypt.hash(parsed.data.next, 10);
-  await prisma.user.update({ where: { id: userId }, data: { password: hash } });
+  // Проверяем текущий пароль повторной аутентификацией.
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: parsed.data.current,
+  });
+  if (signInError) return { error: "Неверный текущий пароль" };
+
+  const { error } = await supabase.auth.updateUser({ password: parsed.data.next });
+  if (error) return { error: error.message };
+
   return { ok: true };
 }
 
 export async function deleteAccount(): Promise<void> {
   const userId = await requireUserId();
+
+  // Удаляем профиль и все связанные данные (каскад по внешним ключам).
   await prisma.user.delete({ where: { id: userId } });
-  await destroySession();
+
+  // Удаляем пользователя из Supabase Auth (требуется секретный ключ).
+  const admin = createAdminClient();
+  await admin.auth.admin.deleteUser(userId);
+
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+
   redirect("/");
 }

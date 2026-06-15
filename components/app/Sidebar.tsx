@@ -18,12 +18,9 @@ import {
   Mail,
   Phone,
   Lock,
-  Building2,
-  PieChart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AccessTier } from "@/lib/access";
-import { getModeFromPath, type AppMode } from "@/lib/mode";
 
 type IconComponent = ComponentType<{ className?: string }>;
 
@@ -62,22 +59,6 @@ const PERSONAL_NAV: NavEntry[] = [
   { href: "/categories", label: "Категории", icon: Tag },
 ];
 
-const RENTIER_NAV: NavEntry[] = [
-  { href: "/rentier/dashboard", label: "Дашборд", icon: LayoutDashboard },
-  { href: "/rentier/properties", label: "Объекты", icon: Building2 },
-  { href: "/rentier/portfolio", label: "Портфель", icon: PieChart },
-];
-
-const BUSINESS_NAV: NavEntry[] = [
-  { href: "/business/dashboard", label: "Дашборд", icon: LayoutDashboard },
-];
-
-const NAV_BY_MODE: Record<AppMode, NavEntry[]> = {
-  personal: PERSONAL_NAV,
-  rentier: RENTIER_NAV,
-  business: BUSINESS_NAV,
-};
-
 function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + "/");
 }
@@ -85,8 +66,7 @@ function isActive(pathname: string, href: string): boolean {
 export function Sidebar({ tier }: { tier: AccessTier }) {
   const isFree = tier === "FREE";
   const pathname = usePathname();
-  const mode = getModeFromPath(pathname);
-  const nav = NAV_BY_MODE[mode];
+  const nav = PERSONAL_NAV;
   const reportsActive =
     isActive(pathname, "/reports") || isActive(pathname, "/balance");
   const [reportsOpen, setReportsOpen] = useState(reportsActive);

@@ -3,6 +3,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { readSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
+import { provisionUser } from "@/lib/onboarding";
 import {
   describeSubscription,
   ensureTrialSubscription,
@@ -30,10 +31,26 @@ export const requireUserId = cache(async (): Promise<string> => {
 export const getCurrentUser = cache(async () => {
   const session = await getSession();
   if (!session?.userId) return null;
-  return prisma.user.findUnique({
+
+  let user = await prisma.user.findUnique({
     where: { id: session.userId },
     select: { id: true, email: true, name: true, createdAt: true },
   });
+
+  // Профиль создаётся в Supabase Auth; если строки в public."User" ещё нет
+  // (например, после подтверждения email), создаём её и засеваем дефолты.
+  if (!user) {
+    await provisionUser({
+      id: session.userId,
+      email: session.email ?? "",
+    });
+    user = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { id: true, email: true, name: true, createdAt: true },
+    });
+  }
+
+  return user;
 });
 
 export const requireUser = cache(async () => {

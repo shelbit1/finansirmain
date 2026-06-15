@@ -15,12 +15,9 @@ import {
   MoreHorizontal,
   Wallet,
   Tag,
-  Building2,
-  PieChart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AccessTier } from "@/lib/access";
-import { getModeFromPath, type AppMode } from "@/lib/mode";
 
 type Tab = {
   href: string;
@@ -41,29 +38,12 @@ const PERSONAL_TABS: Tab[] = [
   { href: "/categories", label: "Категории", icon: Tag },
 ];
 
-const RENTIER_TABS: Tab[] = [
-  { href: "/rentier/dashboard", label: "Главная", icon: LayoutDashboard },
-  { href: "/rentier/properties", label: "Объекты", icon: Building2 },
-  { href: "/rentier/portfolio", label: "Портфель", icon: PieChart },
-];
-
-const BUSINESS_TABS: Tab[] = [
-  { href: "/business/dashboard", label: "Главная", icon: LayoutDashboard },
-];
-
-const TABS_BY_MODE: Record<AppMode, Tab[]> = {
-  personal: PERSONAL_TABS,
-  rentier: RENTIER_TABS,
-  business: BUSINESS_TABS,
-};
-
 const VISIBLE_COUNT = 4;
 
 export function BottomBar({ tier }: { tier: AccessTier }) {
   const pathname = usePathname();
   const isFree = tier === "FREE";
-  const mode = getModeFromPath(pathname);
-  const tabs = TABS_BY_MODE[mode];
+  const tabs = PERSONAL_TABS;
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLLIElement>(null);
 
@@ -82,8 +62,7 @@ export function BottomBar({ tier }: { tier: AccessTier }) {
     setMoreOpen(false);
   }, [pathname]);
 
-  // Overflow «Ещё» только в «Личном» — там много пунктов меню.
-  const needsOverflow = mode === "personal" && tabs.length > VISIBLE_COUNT + 1;
+  const needsOverflow = tabs.length > VISIBLE_COUNT + 1;
   const visible = needsOverflow ? tabs.slice(0, VISIBLE_COUNT) : tabs;
   const overflow = needsOverflow ? tabs.slice(VISIBLE_COUNT) : [];
   const overflowActive = overflow.some(

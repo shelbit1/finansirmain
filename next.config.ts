@@ -6,7 +6,6 @@ const nextConfig: NextConfig = {
     "/*": [
       "./node_modules/.prisma/**/*",
       "./node_modules/@prisma/client/**/*",
-      "./prisma/yandex-root.crt",
     ],
   },
 };

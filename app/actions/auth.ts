@@ -1,11 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/db";
-import { createSession, destroySession } from "@/lib/session";
+import { createClient } from "@/lib/supabase/server";
+import { provisionUser } from "@/lib/onboarding";
 import { loginSchema, registerSchema } from "@/lib/validators";
-import { seedDefaultsForUser } from "@/lib/onboarding";
 
 export type AuthFormState = {
   errors?: Record<string, string[]>;
@@ -29,27 +27,45 @@ export async function registerAction(
   }
 
   const { name, email, password, marketingConsent } = parsed.data;
+  const supabase = await createClient();
 
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    return { errors: { email: ["Пользователь с таким e-mail уже зарегистрирован"] } };
-  }
-
-  const passwordHash = await bcrypt.hash(password, 10);
-  const user = await prisma.user.create({
-    data: {
-      name,
-      email,
-      password: passwordHash,
-      consentAcceptedAt: new Date(),
-      marketingConsent,
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { name, marketing_consent: marketingConsent },
     },
-    select: { id: true },
   });
 
-  await seedDefaultsForUser(user.id);
-  await createSession(user.id, { remember: true });
-  redirect("/dashboard");
+  if (error) {
+    if (error.status === 422 || /already/i.test(error.message)) {
+      return {
+        errors: { email: ["Пользователь с таким e-mail уже зарегистрирован"] },
+      };
+    }
+    return { message: error.message };
+  }
+
+  const userId = data.user?.id;
+
+  // Если подтверждение email выключено — сессия создаётся сразу, можно
+  // сразу создать профиль и засеять дефолты, затем перейти в приложение.
+  if (userId && data.session) {
+    await provisionUser({
+      id: userId,
+      email,
+      name,
+      marketingConsent,
+      consentAcceptedAt: new Date(),
+    });
+    redirect("/dashboard");
+  }
+
+  // Подтверждение email включено: сессии нет, профиль создастся при первом входе.
+  return {
+    message:
+      "Мы отправили письмо для подтверждения e-mail. Перейдите по ссылке из письма, чтобы войти.",
+  };
 }
 
 export async function loginAction(
@@ -66,23 +82,18 @@ export async function loginAction(
   }
 
   const { email, password } = parsed.data;
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) {
+  const supabase = await createClient();
+
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
     return { message: "Неверный e-mail или пароль" };
   }
 
-  const valid = await bcrypt.compare(password, user.password);
-  if (!valid) {
-    return { message: "Неверный e-mail или пароль" };
-  }
-
-  const remember =
-    formData.get("rememberMe") === "on" || formData.get("rememberMe") === "true";
-  await createSession(user.id, { remember });
   redirect("/dashboard");
 }
 
 export async function logoutAction(): Promise<void> {
-  await destroySession();
+  const supabase = await createClient();
+  await supabase.auth.signOut();
   redirect("/login");
 }

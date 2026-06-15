@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import { PrismaClient } from "@prisma/client";
-import { resolveDatabaseUrl } from "@/lib/databaseUrl";
 
 const PRISMA_CLIENT_MARKER = path.join(
   process.cwd(),
@@ -26,9 +25,9 @@ function prismaClientMtime(): number {
 }
 
 function createPrismaClient(): PrismaClient {
-  const url = resolveDatabaseUrl();
+  // DATABASE_URL берётся из datasource (см. prisma/schema.prisma) — это
+  // строка подключения к Postgres проекта Supabase.
   return new PrismaClient({
-    ...(url ? { datasources: { db: { url } } } : {}),
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   });
 }
@@ -56,9 +55,6 @@ function getPrismaClient(): PrismaClient {
  * Прокси сохраняет «горячую» перезагрузку клиента после `prisma generate`,
  * но не подменяет возвращаемые значения — методы делегатов отдают настоящие
  * `PrismaPromise`, что необходимо для `prisma.$transaction([...])`.
- *
- * Для устойчивости к холодным коннектам Yandex Cloud Pooler в DATABASE_URL
- * добавлены параметры `connection_limit`, `pool_timeout` и `connect_timeout`.
  */
 export const prisma = new Proxy({} as PrismaClient, {
   get(_target, prop) {
