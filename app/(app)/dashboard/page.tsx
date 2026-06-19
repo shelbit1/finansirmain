@@ -29,6 +29,7 @@ import { AddTransactionButton } from "@/components/app/transactions/Transactions
 import type { DebtOption } from "@/components/app/transactions/TransactionForm";
 import { DailyChart } from "@/components/app/dashboard/DailyChart";
 import { HealthScoreWidget } from "@/components/app/dashboard/HealthScoreWidget";
+import { BalanceGoalWidget } from "@/components/app/dashboard/BalanceGoalWidget";
 
 export const metadata = { title: "Дашборд — Финансыр" };
 
@@ -198,6 +199,7 @@ export default async function DashboardPage() {
             По {accounts.length} счёт
             {accounts.length === 1 ? "у" : accounts.length < 5 ? "ам" : "ам"}
           </p>
+          <BalanceGoalWidget balance={totalBalance} />
         </div>
 
         <HealthScoreWidget />
