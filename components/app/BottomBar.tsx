@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AccessTier } from "@/lib/access";
+import { getModeFromPath } from "@/lib/mode";
 
 type Tab = {
   href: string;
@@ -38,12 +39,17 @@ const PERSONAL_TABS: Tab[] = [
   { href: "/categories", label: "Категории", icon: Tag },
 ];
 
+const BUSINESS_TABS: Tab[] = [
+  { href: "/business/dashboard", label: "Главная", icon: LayoutDashboard },
+];
+
 const VISIBLE_COUNT = 4;
 
 export function BottomBar({ tier }: { tier: AccessTier }) {
   const pathname = usePathname();
   const isFree = tier === "FREE";
-  const tabs = PERSONAL_TABS;
+  const mode = getModeFromPath(pathname);
+  const tabs = mode === "business" ? BUSINESS_TABS : PERSONAL_TABS;
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLLIElement>(null);
 

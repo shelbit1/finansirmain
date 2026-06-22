@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AccessTier } from "@/lib/access";
+import { getModeFromPath } from "@/lib/mode";
 
 type IconComponent = ComponentType<{ className?: string }>;
 
@@ -66,7 +67,8 @@ function isActive(pathname: string, href: string): boolean {
 export function Sidebar({ tier }: { tier: AccessTier }) {
   const isFree = tier === "FREE";
   const pathname = usePathname();
-  const nav = PERSONAL_NAV;
+  const mode = getModeFromPath(pathname);
+  const nav = mode === "business" ? [] : PERSONAL_NAV;
   const reportsActive =
     isActive(pathname, "/reports") || isActive(pathname, "/balance");
   const [reportsOpen, setReportsOpen] = useState(reportsActive);

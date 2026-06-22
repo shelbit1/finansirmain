@@ -11,6 +11,32 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/app/actions/auth";
+import { APP_MODES, getModeFromPath } from "@/lib/mode";
+
+function ModeSwitch({ pathname }: { pathname: string }) {
+  const currentMode = getModeFromPath(pathname);
+  return (
+    <div className="inline-flex items-center gap-0.5 p-0.5 rounded-lg bg-bg shrink-0">
+      {APP_MODES.map((mode) => {
+        const active = mode.id === currentMode;
+        return (
+          <a
+            key={mode.id}
+            href={mode.dashboardHref}
+            className={cn(
+              "px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors",
+              active
+                ? "bg-surface text-text shadow-sm"
+                : "text-text-muted hover:text-text",
+            )}
+          >
+            {mode.label}
+          </a>
+        );
+      })}
+    </div>
+  );
+}
 
 export const INSTRUCTION_VIDEO_URL =
   "https://rutube.ru/video/25cc4dc8d209a6791f6a4f752aaaa44b/";
@@ -62,6 +88,7 @@ function HeaderToolbar({
             Финансыр
           </Link>
         )}
+        <ModeSwitch pathname={pathname} />
       </div>
 
       <div className="flex items-center gap-1 sm:gap-2 shrink-0">
