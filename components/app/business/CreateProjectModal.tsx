@@ -18,11 +18,11 @@ export function CreateProjectModal({
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    if (state === null && !pending) {
+    if (state?.ok) {
       formRef.current?.reset();
       onClose();
     }
-  }, [state, pending, onClose]);
+  }, [state, onClose]);
 
   return (
     <Modal open={open} onClose={onClose} title="Новый проект">

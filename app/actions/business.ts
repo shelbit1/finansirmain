@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/dal";
 
 export type ProjectFormState = {
+  ok?: boolean;
   errors?: Record<string, string[]>;
   message?: string;
 } | null;
@@ -39,7 +40,7 @@ export async function createProjectAction(
   });
 
   revalidatePath("/business/dashboard");
-  return null;
+  return { ok: true };
 }
 
 export async function deleteProjectAction(id: string): Promise<void> {
